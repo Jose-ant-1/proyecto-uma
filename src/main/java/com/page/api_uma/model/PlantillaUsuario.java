@@ -12,8 +12,8 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 @ToString
-@Table(name = "plantillaInv")
-public class PlantillaInvitar {
+@Table(name = "plantillaUsuario")
+public class PlantillaUsuario {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -25,11 +25,11 @@ public class PlantillaInvitar {
     @ManyToMany
     @Column(insertable = false, updatable = false)
     @JoinTable(
-            name = "pagina_plantilla",
+            name = "usuario_plantillaUsuar",
             joinColumns = @JoinColumn(name = "id_plantilla"),
-            inverseJoinColumns = @JoinColumn(name = "id_pagina")
+            inverseJoinColumns = @JoinColumn(name = "id_usuario")
     )
-    private Set<PaginaWeb> paginasWeb;
+    private Set<Usuario> usuarios;
 
 
 }

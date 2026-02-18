@@ -42,8 +42,9 @@ public class Usuario {
     )
     private Set<PaginaWeb> paginas = new HashSet<>();
 
-    @OneToMany(mappedBy = "usuario", cascade = CascadeType.ALL, orphanRemoval = true)
+    @ManyToMany(mappedBy = "usuarios")
     @JsonIgnore
-    private Set<Invitacion> invitaciones = new HashSet<>();
+    private Set<PlantillaUsuario> plantillaUsuarios = new HashSet<>();
+
 
 }

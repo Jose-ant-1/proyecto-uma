@@ -18,11 +18,15 @@ public class UsuarioController {
         this.service = service;
     }
 
+    @GetMapping("")
+    public ResponseEntity<List<Usuario>> findAll() {
+        return ResponseEntity.ok(service.findAll());
+    }
+
     @GetMapping("/{id}")
     public ResponseEntity<Usuario> findById(@PathVariable Integer id) {
         Usuario usuario = service.findById(id);
         return usuario != null ? ResponseEntity.ok(usuario) : ResponseEntity.notFound().build();
-
     }
 
     @GetMapping("/login")

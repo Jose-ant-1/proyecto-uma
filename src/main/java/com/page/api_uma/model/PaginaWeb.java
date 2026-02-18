@@ -34,10 +34,6 @@ public class PaginaWeb {
 
     @ManyToMany(mappedBy = "paginasWeb")
     @JsonIgnore
-    private Set<PlantillaInvitar> plantillas = new HashSet<>();
-
-    @ManyToMany(mappedBy = "paginasInvitado")
-    @JsonIgnore
-    private Set<Invitacion> invitaciones = new HashSet<>();
+    private Set<PlantillaPagina> plantillasPag = new HashSet<>();
 
 }
