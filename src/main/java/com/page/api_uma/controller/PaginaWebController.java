@@ -4,64 +4,55 @@ import com.page.api_uma.model.PaginaWeb;
 import com.page.api_uma.model.Usuario;
 import com.page.api_uma.service.PaginaWebService;
 import com.page.api_uma.service.UsuarioService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
 
 @RestController
 @RequestMapping("/api/paginas")
 public class PaginaWebController {
 
     private final PaginaWebService paginaService;
-    private final PaginaWebService paginaWebService;
     private final UsuarioService usuarioService;
 
-
-    public PaginaWebController(PaginaWebService service, PaginaWebService paginaWebService, UsuarioService usuarioService) {
+    public PaginaWebController(PaginaWebService service, UsuarioService usuarioService) {
         this.paginaService = service;
-        this.paginaWebService = paginaWebService;
         this.usuarioService = usuarioService;
     }
 
+    // LISTADO: El Admin ve todo, el User solo sus páginas asignadas
     @GetMapping
-    public List<PaginaWeb> findAll() {
-        return paginaService.findAll();
-    }
+    public ResponseEntity<?> findMyPaginas() {
+        Usuario usuario = getUsuarioAutenticado();
+        if (usuario == null) return ResponseEntity.status(401).build();
 
-    @GetMapping
-    public Set<PaginaWeb> findMyPaginas() {
-        // 1. Obtener email del contexto de seguridad
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-
-        Usuario usuario = usuarioService.findByEmail(email);
-
-        if (usuario == null) {
-            return Collections.emptySet();
-        }
-
-        // 2. Si es ADMIN, queremos ver todas las páginas de la app
         if ("ADMIN".equalsIgnoreCase(usuario.getPermiso())) {
-            return new HashSet<>(paginaWebService.findAll());
+            return ResponseEntity.ok(paginaService.findAll());
         }
-
-        // 3. Si es USER, devolvemos su Set personal
-        return usuario.getPaginas();
+        return ResponseEntity.ok(usuario.getPaginas());
     }
 
+    // DETALLE: Arturo no podrá ver la página 3 si no la tiene asignada
     @GetMapping("/{id}")
     public ResponseEntity<PaginaWeb> findById(@PathVariable Integer id) {
+        Usuario usuario = getUsuarioAutenticado();
+
+        // Verificación de seguridad
+        if (!paginaService.usuarioTieneAcceso(usuario, id)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
         PaginaWeb pagina = paginaService.findById(id);
         return pagina != null ? ResponseEntity.ok(pagina) : ResponseEntity.notFound().build();
     }
 
+    // El resto de métodos (POST, PUT, DELETE) ya están protegidos por SecurityConfig,
+    // pero dejamos la lógica de seguridad extra por si acaso.
     @PostMapping
-    public PaginaWeb create(@RequestBody PaginaWeb pagina) {
-        return paginaService.save(pagina);
+    public ResponseEntity<PaginaWeb> create(@RequestBody PaginaWeb pagina) {
+        return ResponseEntity.ok(paginaService.save(pagina));
     }
 
     @PutMapping("/{id}")
@@ -80,4 +71,8 @@ public class PaginaWebController {
         return ResponseEntity.noContent().build();
     }
 
+    private Usuario getUsuarioAutenticado() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return usuarioService.findByEmail(email);
+    }
 }
