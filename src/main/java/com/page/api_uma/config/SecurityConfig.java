@@ -6,6 +6,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
@@ -29,19 +30,25 @@ public class SecurityConfig {
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
                 .cors(Customizer.withDefaults())
-                .csrf(csrf -> csrf.disable())
+                .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // Bloqueamos escritura en páginas para no-admins a nivel de red
-                        .requestMatchers(HttpMethod.POST, "/api/paginas/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/paginas/**").hasRole("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/paginas/**").hasRole("ADMIN")
+                        // 1. EL ORDEN IMPORTA: /me debe ir antes que la restricción de /api/usuarios/**
+                        // Permitimos que CUALQUIER usuario logueado vea su propio perfil
+                        .requestMatchers("/api/usuarios/me").authenticated()
 
-                        // Rutas de administración de usuarios y plantillas
-                        .requestMatchers("/api/usuarios/**").hasRole("ADMIN")
-                        .requestMatchers("/api/plantillaPagina/**").hasRole("ADMIN")
-                        .requestMatchers("/api/plantillaUsuario/**").hasRole("ADMIN")
+                        // 2. RESTRICCIONES DE ESCRITURA PARA PÁGINAS
+                        // Usamos hasAuthority porque en tu DB pone "ADMIN" a secas
+                        .requestMatchers(HttpMethod.POST, "/api/paginas/**").hasAuthority("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/paginas/**").hasAuthority("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/paginas/**").hasAuthority("ADMIN")
 
-                        // El resto requiere estar logueado
+                        // 3. ADMINISTRACIÓN DE USUARIOS Y PLANTILLAS
+                        // Bloqueamos el resto de /api/usuarios/ (como /{id} o el listado general)
+                        .requestMatchers("/api/usuarios/**").hasAuthority("ADMIN")
+                        .requestMatchers("/api/plantillaPagina/**").hasAuthority("ADMIN")
+                        .requestMatchers("/api/plantillaUsuario/**").hasAuthority("ADMIN")
+
+                        // 4. EL RESTO (como ver mis páginas GET /api/paginas)
                         .anyRequest().authenticated()
                 )
                 .httpBasic(Customizer.withDefaults());

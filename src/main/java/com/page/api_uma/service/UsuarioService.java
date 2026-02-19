@@ -4,6 +4,7 @@ import com.page.api_uma.model.PaginaWeb;
 import com.page.api_uma.model.Usuario;
 import com.page.api_uma.repository.PaginaWebRepository;
 import com.page.api_uma.repository.UsuarioRepository;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -72,4 +73,11 @@ public class UsuarioService implements UserDetailsService {
                 .authorities("ROLE_" + usuario.getPermiso())
                 .build();
     }
+
+    public Usuario getUsuarioAutenticado() {
+        // Spring Security nos da el email/username que vino en el Basic Auth
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        return usuarioRepository.findByEmail(email);
+    }
+
 }

@@ -3,10 +3,14 @@ package com.page.api_uma.controller;
 import com.page.api_uma.model.PaginaWeb;
 import com.page.api_uma.model.Usuario;
 import com.page.api_uma.service.UsuarioService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Objects;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -18,9 +22,28 @@ public class UsuarioController {
         this.service = service;
     }
 
-    @GetMapping("")
-    public ResponseEntity<List<Usuario>> findAll() {
-        return ResponseEntity.ok(service.findAll());
+    // --- MÉTODOS PÚBLICOS / ACCESIBLES ---
+
+    @GetMapping("/me")
+    public ResponseEntity<Usuario> getMyProfile() {
+        Usuario autenticado = service.getUsuarioAutenticado();
+        return ResponseEntity.ok(autenticado);
+    }
+
+    @GetMapping("/{id}/paginas")
+    public ResponseEntity<List<PaginaWeb>> findPaginasByUsuarioId(@PathVariable Integer id) {
+        if (!tienePermisoLectura(id)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        return ResponseEntity.ok(service.findPaginasByUsuarioId(id));
+    }
+
+    // --- MÉTODOS DE ADMINISTRACIÓN (Protegidos por SecurityConfig) ---
+
+    @GetMapping
+    public List<Usuario> findAll() {
+        return service.findAll();
     }
 
     @GetMapping("/{id}")
@@ -29,35 +52,24 @@ public class UsuarioController {
         return usuario != null ? ResponseEntity.ok(usuario) : ResponseEntity.notFound().build();
     }
 
-    @GetMapping("/login")
-    public ResponseEntity<Usuario> findByEmail(@PathVariable String email) {
-        Usuario usuario = service.findByEmail(email);
-        return usuario != null ? ResponseEntity.ok(usuario) : ResponseEntity.notFound().build();
-    }
-
-    @GetMapping("/{id}/paginas")
-    public List<PaginaWeb> findPaginasByUsuarioId(@PathVariable Integer id){
-        return service.findPaginasByUsuarioId(id);
-    }
-
     @PostMapping
     public Usuario create(@RequestBody Usuario usuario){
         return service.save(usuario);
-    }
-
-    @PutMapping("/{id}")
-    public ResponseEntity<Usuario> update(@PathVariable Integer id, @RequestBody Usuario detalles){
-        Usuario existente = service.findById(id);
-        if(existente != null){
-            detalles.setId(id);
-            return ResponseEntity.ok(service.save(detalles));
-        }
-        return ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id){
         service.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    private boolean tienePermisoLectura(Integer targetId) {
+        Usuario autenticado = service.getUsuarioAutenticado();
+        if (autenticado == null) return false;
+
+        boolean isAdmin = "ADMIN".equalsIgnoreCase(autenticado.getPermiso());
+        boolean esElMismo = Objects.equals(autenticado.getId(), targetId);
+
+        return isAdmin || esElMismo;
     }
 }
