@@ -64,13 +64,12 @@ public class UsuarioService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        Usuario usuario = usuarioRepository.findByEmail(email);
-        if (usuario == null) throw new UsernameNotFoundException("No existe: " + email);
+        Usuario usuario = usuarioRepository.findByEmail(email); //
+        if (usuario == null) throw new UsernameNotFoundException("No existe: " + email); //
 
         return User.withUsername(usuario.getEmail())
-                .password(usuario.getContrasenia())
-                // Usamos authorities para evitar el lío del prefijo ROLE_
-                .authorities("ROLE_" + usuario.getPermiso())
+                .password(usuario.getContrasenia()) //
+                .authorities(usuario.getPermiso())
                 .build();
     }
 
