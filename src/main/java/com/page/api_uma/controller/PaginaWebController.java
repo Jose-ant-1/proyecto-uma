@@ -9,6 +9,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
 
 @RestController
 @RequestMapping("/api/paginas")
@@ -46,6 +50,20 @@ public class PaginaWebController {
 
         PaginaWeb pagina = paginaService.findById(id);
         return pagina != null ? ResponseEntity.ok(pagina) : ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/{id}/check-status")
+    public ResponseEntity<Integer> checkHealth(@PathVariable int id) {
+        PaginaWeb pagina = paginaService.findById(id);
+        if (pagina == null) return ResponseEntity.notFound().build();
+
+        int statusCode = paginaService.getRemoteStatus(pagina.getUrl());
+        return ResponseEntity.ok(statusCode); // Siempre devolvemos 200 OK con el número dentro
+    }
+
+    @GetMapping("/{id}/usuarios")
+    public ResponseEntity<List<Usuario>> findUsuariosByPaginaId(@PathVariable Integer id) {
+        return ResponseEntity.ok(paginaService.findUsuariosByPaginaId(id));
     }
 
     // El resto de métodos (POST, PUT, DELETE) ya están protegidos por SecurityConfig,
