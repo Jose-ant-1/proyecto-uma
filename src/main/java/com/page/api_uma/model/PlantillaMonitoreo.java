@@ -11,9 +11,10 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString
 @Table(name = "plantillaPag")
-public class PlantillaPagina {
+public class PlantillaMonitoreo {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -23,13 +24,12 @@ public class PlantillaPagina {
     private String nombre;
 
     @ManyToMany
-    @Column(insertable = false, updatable = false)
     @JoinTable(
-            name = "pagina_plantillaPag",
+            name = "monitoreo_plantillaMon",
             joinColumns = @JoinColumn(name = "id_plantillaPag"),
-            inverseJoinColumns = @JoinColumn(name = "id_pagina")
+            inverseJoinColumns = @JoinColumn(name = "id_monitoreo")
     )
-    private Set<PaginaWeb> paginasWeb;
+    private Set<Monitoreo> monitoreos;
 
 
 }

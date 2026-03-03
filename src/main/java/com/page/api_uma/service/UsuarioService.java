@@ -1,8 +1,8 @@
 package com.page.api_uma.service;
 
+import com.page.api_uma.model.Monitoreo;
 import com.page.api_uma.model.PaginaWeb;
 import com.page.api_uma.model.Usuario;
-import com.page.api_uma.repository.PaginaWebRepository;
 import com.page.api_uma.repository.UsuarioRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
@@ -15,19 +15,18 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class UsuarioService implements UserDetailsService {
 
     private final UsuarioRepository usuarioRepository;
-
-    private final PaginaWebRepository paginaWebRepository;
     private final PasswordEncoder passwordEncoder;
 
-    public UsuarioService(UsuarioRepository usuarioRepository, PaginaWebRepository paginaWebRepository, PasswordEncoder passwordEncoder) {
+    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
-
-        this.paginaWebRepository = paginaWebRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -40,6 +39,7 @@ public class UsuarioService implements UserDetailsService {
     }
 
     public Usuario save(Usuario usuario) {
+        // Encriptamos la contraseña antes de guardar
         usuario.setContrasenia(passwordEncoder.encode(usuario.getContrasenia()));
         return usuarioRepository.save(usuario);
     }
@@ -53,28 +53,43 @@ public class UsuarioService implements UserDetailsService {
         return usuarioRepository.findByEmail(email);
     }
 
-    public List<PaginaWeb> findPaginasByUsuarioId(Integer id){
-        Usuario usuario = usuarioRepository.findById(id).orElse(null);
+    /**
+     * REVISADO: Ahora obtenemos las páginas a través de los monitoreos.
+     * Un usuario "tiene" páginas si es dueño de un monitoreo o invitado a uno.
+     */
+    public Set<PaginaWeb> findPaginasAccessibles(Integer usuarioId) {
+        Usuario usuario = usuarioRepository.findById(usuarioId).orElse(null);
         if (usuario == null) {
-            return Collections.emptyList();
+            return Collections.emptySet();
         }
 
-        return usuario.getPaginas().stream().toList();
+        // Combinamos las páginas de sus monitoreos propios y de sus invitaciones
+        return Stream.concat(
+                        usuario.getMonitoreosPropios().stream(),
+                        usuario.getMonitoreosInvitado().stream()
+                )
+                .map(Monitoreo::getPaginaWeb)
+                .collect(Collectors.toSet());
     }
 
+    /**
+     * Requerido por Spring Security para la autenticación.
+     */
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
-        Usuario usuario = usuarioRepository.findByEmail(email); //
-        if (usuario == null) throw new UsernameNotFoundException("No existe: " + email); //
+        Usuario usuario = usuarioRepository.findByEmail(email);
+        if (usuario == null) throw new UsernameNotFoundException("Usuario no encontrado con email: " + email);
 
         return User.withUsername(usuario.getEmail())
-                .password(usuario.getContrasenia()) //
-                .authorities(usuario.getPermiso())
+                .password(usuario.getContrasenia())
+                .authorities(usuario.getPermiso()) // Rol: ADMIN, USER, etc.
                 .build();
     }
 
+    /**
+     * Método central de seguridad: identifica al usuario logueado en la sesión actual.
+     */
     public Usuario getUsuarioAutenticado() {
-        // Spring Security nos da el email/username que vino en el Basic Auth
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return usuarioRepository.findByEmail(email);
     }

@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -13,6 +14,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString
 @Table(name = "pagina")
 public class PaginaWeb {
@@ -28,12 +30,8 @@ public class PaginaWeb {
 
     private String notaInfo;
 
-    @ManyToMany(mappedBy = "paginas")
+    @OneToMany(mappedBy = "paginaWeb")
     @JsonIgnore
-    private Set<Usuario> usuarios = new HashSet<>();
-
-    @ManyToMany(mappedBy = "paginasWeb")
-    @JsonIgnore
-    private Set<PlantillaPagina> plantillasPag = new HashSet<>();
+    private List<Monitoreo> monitoreos;
 
 }

@@ -5,12 +5,11 @@ import com.page.api_uma.model.Usuario;
 import com.page.api_uma.service.UsuarioService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -22,28 +21,36 @@ public class UsuarioController {
         this.service = service;
     }
 
-    // --- MÉTODOS PÚBLICOS / ACCESIBLES ---
+    // --- MÉTODOS DEL PERFIL DEL USUARIO ---
 
     @GetMapping("/me")
     public ResponseEntity<Usuario> getMyProfile() {
         Usuario autenticado = service.getUsuarioAutenticado();
+        if (autenticado == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         return ResponseEntity.ok(autenticado);
     }
 
+    /**
+     * REVISADO: Obtiene las páginas a las que el usuario tiene acceso
+     * (vía monitoreos propios o invitaciones).
+     */
     @GetMapping("/{id}/paginas")
-    public ResponseEntity<List<PaginaWeb>> findPaginasByUsuarioId(@PathVariable Integer id) {
-        if (!tienePermisoLectura(id)) {
+    public ResponseEntity<Set<PaginaWeb>> findPaginasAccessibles(@PathVariable Integer id) {
+        // Validación de seguridad: Solo el propio usuario o un ADMIN pueden ver esta lista
+        if (!tienePermiso(id)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
-        return ResponseEntity.ok(service.findPaginasByUsuarioId(id));
+        return ResponseEntity.ok(service.findPaginasAccessibles(id));
     }
 
-    // --- MÉTODOS DE ADMINISTRACIÓN (Protegidos por SecurityConfig) ---
+    // --- MÉTODOS DE ADMINISTRACIÓN ---
 
     @GetMapping
-    public List<Usuario> findAll() {
-        return service.findAll();
+    public ResponseEntity<List<Usuario>> findAll() {
+        // La restricción de ADMIN suele estar en SecurityConfig,
+        // pero devolvemos ResponseEntity por consistencia.
+        return ResponseEntity.ok(service.findAll());
     }
 
     @GetMapping("/{id}")
@@ -53,8 +60,8 @@ public class UsuarioController {
     }
 
     @PostMapping
-    public Usuario create(@RequestBody Usuario usuario){
-        return service.save(usuario);
+    public ResponseEntity<Usuario> create(@RequestBody Usuario usuario){
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.save(usuario));
     }
 
     @DeleteMapping("/{id}")
@@ -63,7 +70,11 @@ public class UsuarioController {
         return ResponseEntity.noContent().build();
     }
 
-    private boolean tienePermisoLectura(Integer targetId) {
+    /**
+     * Lógica de seguridad compartida:
+     * Permite la acción si el usuario es ADMIN o si actúa sobre su propio ID.
+     */
+    private boolean tienePermiso(Integer targetId) {
         Usuario autenticado = service.getUsuarioAutenticado();
         if (autenticado == null) return false;
 

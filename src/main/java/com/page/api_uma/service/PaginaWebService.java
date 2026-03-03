@@ -27,29 +27,12 @@ public class PaginaWebService {
         return paginaWebRepository.findById(id).orElse(null);
     }
 
-    public List<Usuario> findUsuariosByPaginaId(Integer id){
-        PaginaWeb pagina = paginaWebRepository.findById(id).orElse(null);
-        if (pagina == null) {
-            return Collections.emptyList();
-        }
-
-        return pagina.getUsuarios().stream().toList();
-    }
-
     public PaginaWeb save(PaginaWeb paginaWeb) {
         return paginaWebRepository.save(paginaWeb);
     }
 
     public void deleteById(Integer id) {
         paginaWebRepository.deleteById(id);
-    }
-
-    public boolean usuarioTieneAcceso(Usuario usuario, Integer paginaId) {
-        if ("ADMIN".equalsIgnoreCase(usuario.getPermiso())) return true;
-
-        // Verificamos si la página está en su Set de la relación N:M
-        return usuario.getPaginas().stream()
-                .anyMatch(p -> p.getId() == paginaId);
     }
 
     public int getRemoteStatus(String urlString) {
@@ -59,19 +42,19 @@ public class PaginaWebService {
             java.net.URL url = new java.net.URL(urlString);
             java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
 
-            // --- EL CAMBIO ESTÁ AQUÍ ---
-            // Esto le dice a coches.net: "Soy un usuario normal usando Chrome en Windows"
+            // Disfraz de usuario normal
             connection.setRequestProperty("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36");
-            // ---------------------------
 
             connection.setRequestMethod("GET");
             connection.setConnectTimeout(5000);
             connection.setReadTimeout(5000);
 
             return connection.getResponseCode();
-        } catch (java.net.UnknownHostException e) {
+        }
+        catch (java.net.UnknownHostException e) {
             return 404;
-        } catch (Exception e) {
+        }
+        catch (Exception e) {
             return 500;
         }
     }

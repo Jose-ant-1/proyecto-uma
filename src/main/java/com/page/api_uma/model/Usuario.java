@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 @Entity
@@ -15,6 +16,7 @@ import java.util.Set;
 @AllArgsConstructor
 @Builder
 @ToString
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Table(name = "usuario")
 public class Usuario {
 
@@ -34,17 +36,17 @@ public class Usuario {
     @Column(nullable = false)
     private String permiso;
 
-    @ManyToMany
-    @JoinTable(
-            name = "usuario_paginaWeb",
-            joinColumns = @JoinColumn(name = "id_usuario"),
-            inverseJoinColumns = @JoinColumn(name = "id_pagina")
-    )
-    private Set<PaginaWeb> paginas = new HashSet<>();
-
     @ManyToMany(mappedBy = "usuarios")
     @JsonIgnore
     private Set<PlantillaUsuario> plantillaUsuarios = new HashSet<>();
+
+    @OneToMany(mappedBy = "propietario", cascade = CascadeType.ALL)
+    @JsonIgnore
+    private List<Monitoreo> monitoreosPropios;
+
+    @ManyToMany(mappedBy = "invitados")
+    @JsonIgnore
+    private Set<Monitoreo> monitoreosInvitado;
 
 
 }

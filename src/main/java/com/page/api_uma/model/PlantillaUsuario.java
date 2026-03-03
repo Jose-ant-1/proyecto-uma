@@ -10,6 +10,7 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Builder
 @ToString
 @Table(name = "plantillaUsuario")
@@ -23,7 +24,6 @@ public class PlantillaUsuario {
     private String nombre;
 
     @ManyToMany
-    @Column(insertable = false, updatable = false)
     @JoinTable(
             name = "usuario_plantillaUsuar",
             joinColumns = @JoinColumn(name = "id_plantilla"),

@@ -1,9 +1,7 @@
 package com.page.api_uma.controller;
 
 
-import com.page.api_uma.model.PlantillaPagina;
 import com.page.api_uma.model.PlantillaUsuario;
-import com.page.api_uma.service.PlantillaPaginaService;
 import com.page.api_uma.service.PlantillaUsuarioService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

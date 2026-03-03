@@ -9,10 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-
 
 @RestController
 @RequestMapping("/api/paginas")
@@ -26,53 +23,53 @@ public class PaginaWebController {
         this.usuarioService = usuarioService;
     }
 
-    // LISTADO: El Admin ve todo, el User solo sus páginas asignadas
+    /**
+     * LISTADO GLOBAL
+     * Útil para que un ADMIN gestione la base de datos de páginas
+     * o para funciones de búsqueda/autocompletado.
+     */
     @GetMapping
-    public ResponseEntity<?> findMyPaginas() {
-        Usuario usuario = getUsuarioAutenticado();
-        if (usuario == null) return ResponseEntity.status(401).build();
-
-        if ("ADMIN".equalsIgnoreCase(usuario.getPermiso())) {
-            return ResponseEntity.ok(paginaService.findAll());
-        }
-        return ResponseEntity.ok(usuario.getPaginas());
+    public ResponseEntity<List<PaginaWeb>> findAll() {
+        return ResponseEntity.ok(paginaService.findAll());
     }
 
-    // DETALLE: Arturo no podrá ver la página 3 si no la tiene asignada
+    /**
+     * DETALLE DE PÁGINA
+     * Obtiene la información técnica de una página por su ID.
+     */
     @GetMapping("/{id}")
     public ResponseEntity<PaginaWeb> findById(@PathVariable Integer id) {
-        Usuario usuario = getUsuarioAutenticado();
-
-        // Verificación de seguridad
-        if (!paginaService.usuarioTieneAcceso(usuario, id)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
         PaginaWeb pagina = paginaService.findById(id);
         return pagina != null ? ResponseEntity.ok(pagina) : ResponseEntity.notFound().build();
     }
 
+    /**
+     * COMPROBACIÓN DE ESTADO (Health Check)
+     * Lógica de red para verificar si la URL responde, sin necesidad de ser dueño.
+     */
     @GetMapping("/{id}/check-status")
     public ResponseEntity<Integer> checkHealth(@PathVariable int id) {
         PaginaWeb pagina = paginaService.findById(id);
         if (pagina == null) return ResponseEntity.notFound().build();
 
         int statusCode = paginaService.getRemoteStatus(pagina.getUrl());
-        return ResponseEntity.ok(statusCode); // Siempre devolvemos 200 OK con el número dentro
+        return ResponseEntity.ok(statusCode);
     }
 
-    @GetMapping("/{id}/usuarios")
-    public ResponseEntity<List<Usuario>> findUsuariosByPaginaId(@PathVariable Integer id) {
-        return ResponseEntity.ok(paginaService.findUsuariosByPaginaId(id));
-    }
-
-    // El resto de métodos (POST, PUT, DELETE) ya están protegidos por SecurityConfig,
-    // pero dejamos la lógica de seguridad extra por si acaso.
+    /**
+     * CREAR PÁGINA
+     * Aunque se suelen crear vía Monitoreo, este endpoint permite registrar
+     * páginas en la biblioteca (ej. para plantillas).
+     */
     @PostMapping
     public ResponseEntity<PaginaWeb> create(@RequestBody PaginaWeb pagina) {
-        return ResponseEntity.ok(paginaService.save(pagina));
+        return ResponseEntity.status(HttpStatus.CREATED).body(paginaService.save(pagina));
     }
 
+    /**
+     * ACTUALIZAR PÁGINA
+     * Permite editar el nombre o la nota informativa de una URL globalmente.
+     */
     @PutMapping("/{id}")
     public ResponseEntity<PaginaWeb> update(@PathVariable Integer id, @RequestBody PaginaWeb detalle) {
         PaginaWeb existe = paginaService.findById(id);
@@ -83,12 +80,20 @@ public class PaginaWebController {
         return ResponseEntity.notFound().build();
     }
 
+    /**
+     * ELIMINAR PÁGINA
+     * Elimina el registro de la biblioteca. Precaución con la integridad referencial.
+     */
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         paginaService.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 
+    /**
+     * HELPER: Obtiene el usuario autenticado desde el contexto de seguridad.
+     * Se usa para identificar quién hace la petición basándose en su Token/Sesión.
+     */
     private Usuario getUsuarioAutenticado() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return usuarioService.findByEmail(email);
