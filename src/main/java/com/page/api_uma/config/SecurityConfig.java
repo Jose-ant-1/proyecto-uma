@@ -32,26 +32,29 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // 1. EL ORDEN IMPORTA: /me debe ir antes que la restricción de /api/usuarios/**
-                        // Permitimos que CUALQUIER usuario logueado vea su propio perfil
+                        // 1. PERMITIR SIEMPRE EL LOGIN (Endpoint /me)
+                        // Esta debe ser la primerísima regla para que no la pise nadie
                         .requestMatchers("/api/usuarios/me").authenticated()
 
-                        // 2. RESTRICCIONES DE ESCRITURA PARA PÁGINAS
-                        // Usamos hasAuthority porque en tu DB pone "ADMIN" a secas
+                        // 2. MONITOREOS Y PAGINAS (Lectura para todos, el resto filtrado en Service)
+                        .requestMatchers("/api/monitoreos/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/paginas/**").authenticated()
+
+                        // 3. PLANTILLAS (Nuevas políticas: Propietarios y Admins pueden entrar)
+                        .requestMatchers("/api/plantillaPagina/**").authenticated()
+                        .requestMatchers("/api/plantillaUsuario/**").authenticated()
+
+                        // 4. RESTRICCIONES DE ADMIN (Escritura en páginas y gestión de usuarios)
                         .requestMatchers(HttpMethod.POST, "/api/paginas/**").hasAuthority("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/paginas/**").hasAuthority("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/paginas/**").hasAuthority("ADMIN")
-
-                        // 3. ADMINISTRACIÓN DE USUARIOS Y PLANTILLAS
-                        // Bloqueamos el resto de /api/usuarios/ (como /{id} o el listado general)
                         .requestMatchers("/api/usuarios/**").hasAuthority("ADMIN")
-                        .requestMatchers("/api/plantillaPagina/**").hasAuthority("ADMIN")
-                        .requestMatchers("/api/plantillaUsuario/**").hasAuthority("ADMIN")
 
-                        // 4. EL RESTO (como ver mis páginas GET /api/paginas)
+                        // 5. CUALQUIER OTRA PETICIÓN
                         .anyRequest().authenticated()
                 )
                 .httpBasic(Customizer.withDefaults());
+
         return http.build();
     }
 

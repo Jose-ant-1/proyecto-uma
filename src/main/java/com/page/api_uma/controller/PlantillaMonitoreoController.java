@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/plantillaPagina")
+@RequestMapping("/api/plantillaMonitoreo")
 public class PlantillaMonitoreoController {
 
     private final PlantillaMonitoreoService service;
@@ -27,6 +27,12 @@ public class PlantillaMonitoreoController {
     public ResponseEntity<PlantillaMonitoreo> findById(@PathVariable Integer id) {
         PlantillaMonitoreo pagina = service.findById(id);
         return pagina != null ? ResponseEntity.ok(pagina) : ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/propietario/{id}")
+    public ResponseEntity<List<PlantillaMonitoreo>> findByPropietario(@PathVariable Integer id) {
+        List<PlantillaMonitoreo> monitoreos = service.findByUsuario(id);
+        return ResponseEntity.ok(monitoreos);
     }
 
     @PostMapping

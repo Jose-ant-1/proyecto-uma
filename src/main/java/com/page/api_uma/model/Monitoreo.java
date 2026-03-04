@@ -1,10 +1,11 @@
 package com.page.api_uma.model;
 
-
 import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -13,18 +14,24 @@ import java.util.Set;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@ToString
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) // Limpia el JSON de basura técnica
 @Table(name = "monitoreos")
 public class Monitoreo {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
     private int id;
 
     private String nombre;
     private int repeticiones;
     private int minutosMonitoreo;
+
+    // --- NUEVOS CAMPOS DE ESTADO ---
+    private Integer estado; // Almacenará el código HTTP (200, 404, 500...)
+    private LocalDateTime fechaUltimaRevision;
+    private boolean activo = true; // Para que el usuario pueda pausar el monitoreo
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "propietario_id", nullable = false)
@@ -45,5 +52,4 @@ public class Monitoreo {
     @ManyToMany(mappedBy = "monitoreos")
     @JsonIgnore
     private Set<PlantillaMonitoreo> plantillasMon = new HashSet<>();
-
 }

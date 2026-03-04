@@ -57,18 +57,16 @@ public class UsuarioService implements UserDetailsService {
      * REVISADO: Ahora obtenemos las páginas a través de los monitoreos.
      * Un usuario "tiene" páginas si es dueño de un monitoreo o invitado a uno.
      */
-    public Set<PaginaWeb> findPaginasAccessibles(Integer usuarioId) {
+    public Set<Monitoreo> findMonitoreosAccessibles(Integer usuarioId) {
         Usuario usuario = usuarioRepository.findById(usuarioId).orElse(null);
         if (usuario == null) {
             return Collections.emptySet();
         }
 
-        // Combinamos las páginas de sus monitoreos propios y de sus invitaciones
         return Stream.concat(
                         usuario.getMonitoreosPropios().stream(),
                         usuario.getMonitoreosInvitado().stream()
                 )
-                .map(Monitoreo::getPaginaWeb)
                 .collect(Collectors.toSet());
     }
 
