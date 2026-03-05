@@ -1,5 +1,6 @@
 package com.page.api_uma.model;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
@@ -30,6 +31,8 @@ public class Monitoreo {
 
     // --- NUEVOS CAMPOS DE ESTADO ---
     private Integer estado; // Almacenará el código HTTP (200, 404, 500...)
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime fechaUltimaRevision;
     private boolean activo = true; // Para que el usuario pueda pausar el monitoreo
 

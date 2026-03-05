@@ -20,7 +20,6 @@ import java.util.List;
 @EnableWebSecurity
 public class SecurityConfig {
 
-    // 1. Aquí defines el Bean para hashear contraseñas
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder();
@@ -32,25 +31,28 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // 1. PERMITIR SIEMPRE EL LOGIN (Endpoint /me)
-                        // Esta debe ser la primerísima regla para que no la pise nadie
-                        .requestMatchers("/api/usuarios/me").authenticated()
+                        // 1. PRIORIDAD: LOGIN Y PERFIL PROPIO
+                        // Permitimos GET para login y PUT para que el usuario edite su propia info
+                        .requestMatchers(HttpMethod.GET, "/api/usuarios/me").authenticated()
+                        .requestMatchers(HttpMethod.PUT, "/api/usuarios/me").authenticated()
 
-                        // 2. MONITOREOS Y PAGINAS (Lectura para todos, el resto filtrado en Service)
-                        .requestMatchers("/api/monitoreos/**").authenticated()
-                        .requestMatchers(HttpMethod.GET, "/api/paginas/**").authenticated()
+                        // 2. RESTRICCIONES DE ADMINISTRADOR
+                        // Una vez excluido el /me, el resto de /api/usuarios/** requiere ser ADMIN
+                        .requestMatchers("/api/usuarios/**").hasAuthority("ADMIN")
 
-                        // 3. PLANTILLAS (Nuevas políticas: Propietarios y Admins pueden entrar)
-                        .requestMatchers("/api/plantillaPagina/**").authenticated()
-                        .requestMatchers("/api/plantillaUsuario/**").authenticated()
-
-                        // 4. RESTRICCIONES DE ADMIN (Escritura en páginas y gestión de usuarios)
+                        // Solo los ADMIN pueden crear, editar o borrar PÁGINAS (según tu planteamiento previo)
                         .requestMatchers(HttpMethod.POST, "/api/paginas/**").hasAuthority("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/api/paginas/**").hasAuthority("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/api/paginas/**").hasAuthority("ADMIN")
-                        .requestMatchers("/api/usuarios/**").hasAuthority("ADMIN")
 
-                        // 5. CUALQUIER OTRA PETICIÓN
+                        // 3. ACCESO GENERAL AUTENTICADO
+                        // Cualquier usuario logueado puede gestionar sus monitoreos
+                        .requestMatchers("/api/monitoreos/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/paginas/**").authenticated()
+                        .requestMatchers("/api/plantillaPagina/**").authenticated()
+                        .requestMatchers("/api/plantillaUsuario/**").authenticated()
+
+                        // 4. CUALQUIER OTRA PETICIÓN
                         .anyRequest().authenticated()
                 )
                 .httpBasic(Customizer.withDefaults());
@@ -61,17 +63,17 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+        // Permitimos el origen de tu frontend Angular
         configuration.setAllowedOrigins(List.of("http://localhost:4200"));
-        configuration.setAllowedMethods(Arrays.asList("GET","POST", "PUT", "DELETE", "OPTIONS"));
-        // Añadimos "Accept" por si acaso
+        // Es vital incluir OPTIONS para las peticiones de pre-vuelo del navegador
+        configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        // Permitimos las cabeceras necesarias para Basic Auth y JSON
         configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept"));
-
-        // FUNDAMENTAL: Permitir que el navegador envíe credenciales (cookies/auth headers)
+        // Permitimos el envío de credenciales
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }
-
 }

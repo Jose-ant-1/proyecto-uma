@@ -21,36 +21,44 @@ public class MonitoreoService {
     private final MonitoreoRepository monitoreoRepository;
     private final PaginaWebRepository paginaWebRepository;
     private final PaginaWebService paginaWebService;
+    private final UsuarioService usuarioService;
 
     public MonitoreoService(MonitoreoRepository monitoreoRepository,
                             PaginaWebRepository paginaWebRepository,
-                            PaginaWebService paginaWebService) {
+                            PaginaWebService paginaWebService,
+                            UsuarioService usuarioService) {
         this.monitoreoRepository = monitoreoRepository;
         this.paginaWebRepository = paginaWebRepository;
         this.paginaWebService = paginaWebService;
+        this.usuarioService = usuarioService;
     }
 
     // --- 1. CREATE ---
     @Transactional
-    public MonitoreoDTO crearMonitoreo(Usuario propietario, String url, String nombrePagina, int minutos) {
+    public MonitoreoDTO crearMonitoreo(Usuario propietario, String url, String nombreMonitoreo, int minutos, int repeticiones) {
+        // 1. Buscar si la página ya existe por URL
         PaginaWeb pagina = paginaWebRepository.findByUrl(url)
                 .orElseGet(() -> {
-                    PaginaWeb nueva = PaginaWeb.builder()
-                            .url(url)
-                            .nombre(nombrePagina)
-                            .build();
-                    return paginaWebRepository.save(nueva);
+                    // 2. Si no existe, crearla con el nombre del dominio
+                    String dominio = extraerDominio(url);
+                    PaginaWeb nuevaPaso = new PaginaWeb();
+                    nuevaPaso.setUrl(url);
+                    nuevaPaso.setNombre(dominio);
+                    nuevaPaso.setNotaInfo(""); // Nota vacía como pediste
+                    return paginaWebRepository.save(nuevaPaso);
                 });
 
-        Monitoreo monitoreo = new Monitoreo();
-        monitoreo.setNombre("Monitoreo: " + nombrePagina);
-        monitoreo.setMinutosMonitoreo(minutos);
-        monitoreo.setPropietario(propietario);
-        monitoreo.setPaginaWeb(pagina);
-        monitoreo.setRepeticiones(1);
-        monitoreo.setActivo(true);
+        // 3. Crear el nuevo monitoreo vinculado a esa página
+        Monitoreo m = new Monitoreo();
+        m.setNombre(nombreMonitoreo);
+        m.setPaginaWeb(pagina);
+        m.setPropietario(propietario);
+        m.setMinutosMonitoreo(minutos);
+        m.setRepeticiones(repeticiones);
+        m.setActivo(true);
+        m.setEstado(null); // Empezará a chequearse en el siguiente ciclo del Scheduler
 
-        return convertirADTO(monitoreoRepository.save(monitoreo));
+        return convertirADTO(monitoreoRepository.save(m));
     }
 
     // --- 2. READ (Obtener uno solo con seguridad) ---
@@ -108,17 +116,81 @@ public class MonitoreoService {
         return convertirADTO(monitoreoRepository.save(monitoreo));
     }
 
+    public PaginaWeb obtenerPaginaPorMonitoreoId(int monitoreoId, int usuarioId) {
+
+        Monitoreo monitoreo = monitoreoRepository.findById(monitoreoId).orElse(null);
+
+        if (monitoreo != null) {
+            boolean esDueno = monitoreo.getPropietario().getId() == usuarioId;
+            boolean esInvitado = monitoreo.getInvitados().stream()
+                    .anyMatch(u -> u.getId() == usuarioId);
+
+            if (esDueno || esInvitado) {
+                return monitoreo.getPaginaWeb();
+            }
+        }
+        return null;
+    }
+
+    @Transactional
+    public MonitoreoDTO invitarUsuario(int idMonitoreo, int idPropietario, String emailInvitado) {
+        Optional<Monitoreo> optMonitoreo = monitoreoRepository.findById(idMonitoreo);
+        Usuario invitado = usuarioService.findByEmail(emailInvitado);
+
+        if (optMonitoreo.isPresent() && invitado != null) {
+            Monitoreo m = optMonitoreo.get();
+
+            // 1. Validar que solo el dueño puede invitar
+            if (m.getPropietario().getId() == idPropietario) {
+
+                // 2. No invitarse a sí mismo
+                if (m.getPropietario().getId() == invitado.getId()) {
+                    return null;
+                }
+
+                // 3. Añadir al Set (Hibernate gestiona la tabla monitoreo_invitados)
+                m.getInvitados().add(invitado);
+                return convertirADTO(monitoreoRepository.save(m));
+            }
+        }
+        return null;
+    }
+
     // --- 6. CONVERSOR DTO ---
     public MonitoreoDTO convertirADTO(Monitoreo m) {
         return MonitoreoDTO.builder()
                 .id(m.getId())
                 .nombre(m.getNombre())
                 .minutosMonitoreo(m.getMinutosMonitoreo())
+                .repeticiones(m.getRepeticiones())
                 .ultimoEstado(m.getEstado())
                 .fechaUltimaRevision(m.getFechaUltimaRevision())
                 .activo(m.isActivo())
                 .paginaUrl(m.getPaginaWeb().getUrl())
-                .propietarioNombre(m.getPropietario().getNombre())
+                .propietarioId(m.getPropietario().getId())
+
+                // ESTA ES LA LÍNEA QUE FALTA:
+                .invitadosCorreo(m.getInvitados().stream()
+                        .map(Usuario::getEmail)
+                        .collect(Collectors.toSet()))
                 .build();
     }
+
+    public List<MonitoreoDTO> obtenerTodosLosMonitoreos() {
+        return monitoreoRepository.findAll().stream()
+                .map(this::convertirADTO)
+                .collect(Collectors.toList());
+    }
+
+    // Método auxiliar para limpiar la URL y sacar el dominio
+    private String extraerDominio(String url) {
+        try {
+            String domain = url.replaceFirst("^(https?://)?(www\\.)?", "");
+            int index = domain.indexOf('/');
+            return index != -1 ? domain.substring(0, index) : domain;
+        } catch (Exception e) {
+            return "Nueva Página";
+        }
+    }
+
 }

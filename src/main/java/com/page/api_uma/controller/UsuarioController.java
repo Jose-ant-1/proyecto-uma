@@ -1,8 +1,6 @@
 package com.page.api_uma.controller;
 
 import com.page.api_uma.DTOs.UsuarioDTO;
-import com.page.api_uma.model.Monitoreo;
-import com.page.api_uma.model.PaginaWeb;
 import com.page.api_uma.model.Usuario;
 import com.page.api_uma.service.UsuarioService;
 import org.springframework.http.HttpStatus;
@@ -11,7 +9,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -26,22 +23,35 @@ public class UsuarioController {
 
     // --- PERFIL DEL USUARIO ---
 
-    @GetMapping("/me")
-    public ResponseEntity<UsuarioDTO> getMyProfile() {
-        Usuario autenticado = service.getUsuarioAutenticado();
-        if (autenticado == null) return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+    // En UsuarioController.java (Sugerencia para que el usuario se edite a sí mismo)
+    @PutMapping("/me")
+    public ResponseEntity<Usuario> updateMe(@RequestBody Usuario datosRecibidos) {
+        // 1. Obtenemos el usuario persistido actual de la sesión
+        Usuario actual = service.getUsuarioAutenticado();
 
-        return ResponseEntity.ok(convertirADTO(autenticado));
+        // 2. Actualizamos solo los campos que permitimos cambiar desde el perfil
+        actual.setNombre(datosRecibidos.getNombre());
+        actual.setEmail(datosRecibidos.getEmail());
+
+        // 3. Verificamos si se ha enviado una nueva contraseña
+        if (datosRecibidos.getContrasenia() != null && !datosRecibidos.getContrasenia().isBlank()) {
+            actual.setContrasenia(datosRecibidos.getContrasenia());
+        }
+
+        // 4. Guardamos usando tu método 'save' que ya encripta
+        Usuario guardado = service.save(actual);
+
+        return ResponseEntity.ok(guardado);
     }
 
-    @GetMapping("/{id}/monitoreos")
-    public ResponseEntity<Set<Monitoreo>> findMonitoreosAccessibles(@PathVariable Integer id) {
-        if (!tienePermiso(id)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    // UsuarioController.java
+    @GetMapping("/me")
+    public ResponseEntity<UsuarioDTO> getMe() {
+        Usuario actual = service.getUsuarioAutenticado();
+        if (actual == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
-        // Aquí devolvemos PaginaWeb porque no suele tener datos sensibles,
-        // pero recuerda ponerle el @JsonIgnoreProperties en la entidad.
-        return ResponseEntity.ok(service.findMonitoreosAccessibles(id));
+        return ResponseEntity.ok(convertirADTO(actual));
     }
 
     // --- ADMINISTRACIÓN ---
@@ -52,6 +62,12 @@ public class UsuarioController {
                 .map(this::convertirADTO)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(usuarios);
+    }
+
+    @GetMapping("/buscar")
+    public ResponseEntity<UsuarioDTO> findByEmail(@RequestParam String email) {
+        Usuario usuario = service.buscarPorEmail(email);
+        return ResponseEntity.ok(convertirADTO(usuario));
     }
 
     @GetMapping("/{id}")

@@ -38,9 +38,14 @@ public class UsuarioService implements UserDetailsService {
         return usuarioRepository.findById(id).orElse(null);
     }
 
+    // UsuarioService.java corregido
     public Usuario save(Usuario usuario) {
-        // Encriptamos la contraseña antes de guardar
-        usuario.setContrasenia(passwordEncoder.encode(usuario.getContrasenia()));
+        if (usuario.getContrasenia() != null && !usuario.getContrasenia().isBlank()) {
+            // IMPORTANTE: Solo encriptar si NO es ya un hash de BCrypt
+            if (!usuario.getContrasenia().startsWith("$2a$")) {
+                usuario.setContrasenia(passwordEncoder.encode(usuario.getContrasenia()));
+            }
+        }
         return usuarioRepository.save(usuario);
     }
 
@@ -68,6 +73,12 @@ public class UsuarioService implements UserDetailsService {
                         usuario.getMonitoreosInvitado().stream()
                 )
                 .collect(Collectors.toSet());
+    }
+
+    public Usuario buscarPorEmail(String email) {
+        Usuario usuario = usuarioRepository.findByEmail(email);
+        if (usuario == null) throw new UsernameNotFoundException("Usuario no encontrado con email: " + email);
+        return usuario;
     }
 
     /**
