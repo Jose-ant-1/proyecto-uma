@@ -1,6 +1,7 @@
 package com.page.api_uma.controller;
 
-import com.page.api_uma.DTOs.MonitoreoDTO;
+import com.page.api_uma.DTOs.MonitoreoDTODetalle;
+import com.page.api_uma.DTOs.MonitoreoListadoDTO; // Importante añadirlo
 import com.page.api_uma.model.PaginaWeb;
 import com.page.api_uma.model.Usuario;
 import com.page.api_uma.service.MonitoreoService;
@@ -25,59 +26,61 @@ public class MonitoreoController {
         this.usuarioService = usuarioService;
     }
 
-    /**
-     * Método privado de ayuda.
-     * Al llamarlo dentro de cada método, garantizamos que el usuario sea
-     * el del hilo (thread) actual de la petición, evitando el Error 500.
-     */
     private Usuario getActual() {
         return usuarioService.getUsuarioAutenticado();
     }
 
     // --- 1. CREATE ---
     @PostMapping
-    public ResponseEntity<MonitoreoDTO> create(@RequestBody Map<String, Object> payload) {
-        Usuario actual = getActual(); // Lo obtenemos localmente
+    public ResponseEntity<MonitoreoDTODetalle> create(@RequestBody Map<String, Object> payload) {
+        Usuario actual = getActual();
         String url = (String) payload.get("url");
         String nombreMonitoreo = (String) payload.get("nombre");
         int minutos = ((Number) payload.get("minutos")).intValue();
         int repeticiones = ((Number) payload.getOrDefault("repeticiones", 3)).intValue();
 
-        MonitoreoDTO nuevo = monitoreoService.crearMonitoreo(actual, url, nombreMonitoreo, minutos, repeticiones);
+        MonitoreoDTODetalle nuevo = monitoreoService.crearMonitoreo(actual, url, nombreMonitoreo, minutos, repeticiones);
         return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
     }
 
-    // --- 2. READ ALL ---
+    // --- 2. READ ALL (MODIFICADOS PARA LISTADO DTO) ---
     @GetMapping
-    public ResponseEntity<List<MonitoreoDTO>> getAllMyMonitoreos() {
+    public ResponseEntity<List<MonitoreoListadoDTO>> getAllMyMonitoreos() {
         Usuario actual = getActual();
         return ResponseEntity.ok(actual.getMonitoreosPropios().stream()
-                .map(monitoreoService::convertirADTO).collect(Collectors.toList()));
+                .map(monitoreoService::convertirAListadoDTO) // Cambio a mapper ligero
+                .collect(Collectors.toList()));
     }
 
     @GetMapping("/colaboraciones")
-    public ResponseEntity<List<MonitoreoDTO>> getMonitoreosInvitado() {
+    public ResponseEntity<List<MonitoreoListadoDTO>> getMonitoreosInvitado() {
         Usuario actual = getActual();
         return ResponseEntity.ok(actual.getMonitoreosInvitado().stream()
-                .map(monitoreoService::convertirADTO).collect(Collectors.toList()));
+                .map(monitoreoService::convertirAListadoDTO) // Cambio a mapper ligero
+                .collect(Collectors.toList()));
     }
 
-    // --- ENDPOINT PARA ADMINS ---
     @GetMapping("/all")
-    public ResponseEntity<List<MonitoreoDTO>> getAllForAdmin() {
+    public ResponseEntity<List<MonitoreoListadoDTO>> getAllForAdmin() {
         Usuario actual = getActual();
         if (!"ADMIN".equals(actual.getPermiso())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
+        // Este método en el service ya devuelve List<MonitoreoListadoDTO>
         return ResponseEntity.ok(monitoreoService.obtenerTodosLosMonitoreos());
     }
 
-    // --- 3. READ ONE ---
+    // --- 3. READ ONE (MODIFICADO PARA DETALLE DTO) ---
+
     @GetMapping("/{id}")
-    public ResponseEntity<MonitoreoDTO> getById(@PathVariable int id) {
-        // Usamos el ID directamente del usuario autenticado
-        MonitoreoDTO dto = monitoreoService.obtenerPorIdSiTieneAcceso(id, getActual().getId());
-        return dto != null ? ResponseEntity.ok(dto) : ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    public ResponseEntity<MonitoreoDTODetalle> getById(@PathVariable int id) {
+        // IMPORTANTE: Pasamos el ID del usuario que está logueado (getActual().getId())
+        MonitoreoDTODetalle dto = monitoreoService.obtenerDetalleSeguro(id, getActual().getId());
+
+        if (dto == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(dto);
     }
 
     @GetMapping("/{id}/pagina")
@@ -88,8 +91,8 @@ public class MonitoreoController {
 
     // --- 4. UPDATE ---
     @PutMapping("/{id}")
-    public ResponseEntity<MonitoreoDTO> update(@PathVariable int id, @RequestBody Map<String, Object> payload) {
-        MonitoreoDTO actualizado = monitoreoService.actualizarConfiguracion(id, getActual().getId(), payload);
+    public ResponseEntity<MonitoreoDTODetalle> update(@PathVariable int id, @RequestBody Map<String, Object> payload) {
+        MonitoreoDTODetalle actualizado = monitoreoService.actualizarConfiguracion(id, getActual().getId(), payload);
         return actualizado != null ? ResponseEntity.ok(actualizado) : ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
@@ -102,18 +105,18 @@ public class MonitoreoController {
 
     // --- MÉTODOS EXTRA ---
     @PostMapping("/{id}/check")
-    public ResponseEntity<MonitoreoDTO> checkNow(@PathVariable int id) {
-        MonitoreoDTO actualizado = monitoreoService.ejecutarChequeo(id);
+    public ResponseEntity<MonitoreoDTODetalle> checkNow(@PathVariable int id) {
+        MonitoreoDTODetalle actualizado = monitoreoService.ejecutarChequeo(id);
         return actualizado != null ? ResponseEntity.ok(actualizado) : ResponseEntity.notFound().build();
     }
 
     @PutMapping("/{id}/invitar")
-    public ResponseEntity<MonitoreoDTO> invitar(@PathVariable int id, @RequestBody Map<String, String> payload) {
+    public ResponseEntity<MonitoreoDTODetalle> invitar(@PathVariable int id, @RequestBody Map<String, String> payload) {
         String emailInvitado = payload.get("email");
         if (emailInvitado == null || emailInvitado.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
-        MonitoreoDTO actualizado = monitoreoService.invitarUsuario(id, getActual().getId(), emailInvitado);
+        MonitoreoDTODetalle actualizado = monitoreoService.invitarUsuario(id, getActual().getId(), emailInvitado);
         return actualizado != null ? ResponseEntity.ok(actualizado) : ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 }

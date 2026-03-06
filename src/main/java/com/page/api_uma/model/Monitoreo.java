@@ -46,7 +46,7 @@ public class Monitoreo {
             joinColumns = @JoinColumn(name = "monitoreo_id"),
             inverseJoinColumns = @JoinColumn(name = "usuario_id")
     )
-    private Set<Usuario> invitados;
+    private Set<Usuario> invitados = new HashSet<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "id_pagina", nullable = false)

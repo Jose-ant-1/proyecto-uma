@@ -1,6 +1,8 @@
 package com.page.api_uma.service;
 
-import com.page.api_uma.DTOs.MonitoreoDTO;
+import com.page.api_uma.DTOs.MonitoreoDTODetalle;
+import com.page.api_uma.DTOs.MonitoreoListadoDTO;
+import com.page.api_uma.DTOs.UsuarioDTO;
 import com.page.api_uma.model.Monitoreo;
 import com.page.api_uma.model.PaginaWeb;
 import com.page.api_uma.model.Usuario;
@@ -33,22 +35,22 @@ public class MonitoreoService {
         this.usuarioService = usuarioService;
     }
 
-    // --- 1. CREATE ---
+    // ==========================================
+    // 1. MÉTODOS DE CREACIÓN Y ESCRITURA
+    // ==========================================
+
     @Transactional
-    public MonitoreoDTO crearMonitoreo(Usuario propietario, String url, String nombreMonitoreo, int minutos, int repeticiones) {
-        // 1. Buscar si la página ya existe por URL
+    public MonitoreoDTODetalle crearMonitoreo(Usuario propietario, String url, String nombreMonitoreo, int minutos, int repeticiones) {
         PaginaWeb pagina = paginaWebRepository.findByUrl(url)
                 .orElseGet(() -> {
-                    // 2. Si no existe, crearla con el nombre del dominio
                     String dominio = extraerDominio(url);
-                    PaginaWeb nuevaPaso = new PaginaWeb();
-                    nuevaPaso.setUrl(url);
-                    nuevaPaso.setNombre(dominio);
-                    nuevaPaso.setNotaInfo(""); // Nota vacía como pediste
-                    return paginaWebRepository.save(nuevaPaso);
+                    PaginaWeb nueva = new PaginaWeb();
+                    nueva.setUrl(url);
+                    nueva.setNombre(dominio);
+                    nueva.setNotaInfo("");
+                    return paginaWebRepository.save(nueva);
                 });
 
-        // 3. Crear el nuevo monitoreo vinculado a esa página
         Monitoreo m = new Monitoreo();
         m.setNombre(nombreMonitoreo);
         m.setPaginaWeb(pagina);
@@ -56,109 +58,126 @@ public class MonitoreoService {
         m.setMinutosMonitoreo(minutos);
         m.setRepeticiones(repeticiones);
         m.setActivo(true);
-        m.setEstado(null); // Empezará a chequearse en el siguiente ciclo del Scheduler
 
-        return convertirADTO(monitoreoRepository.save(m));
+        return convertirADetalleDTO(monitoreoRepository.save(m));
     }
 
-    // --- 2. READ (Obtener uno solo con seguridad) ---
-    public MonitoreoDTO obtenerPorIdSiTieneAcceso(int idMonitoreo, int idUsuario) {
-        return monitoreoRepository.findById(idMonitoreo)
-                .filter(m -> m.getPropietario().getId() == idUsuario ||
-                        m.getInvitados().stream().anyMatch(inv -> inv.getId() == idUsuario))
-                .map(this::convertirADTO)
-                .orElse(null);
-    }
 
-    // --- 3. UPDATE (Actualizar configuración) ---
-    @Transactional
-    public MonitoreoDTO actualizarConfiguracion(int idMonitoreo, int idUsuario, Map<String, Object> datos) {
-        Optional<Monitoreo> opt = monitoreoRepository.findById(idMonitoreo);
+    public MonitoreoDTODetalle actualizarConfiguracion(int id, int usuarioId, Map<String, Object> payload) {
+        Monitoreo m = monitoreoRepository.findById(id).orElse(null);
+        Usuario u = usuarioService.findById(usuarioId); // Obtenemos el usuario que hace la petición
 
-        if (opt.isPresent()) {
-            Monitoreo m = opt.get();
-            // Solo el dueño puede editar la configuración básica
-            if (m.getPropietario().getId() == idUsuario) {
-                if (datos.containsKey("nombre")) m.setNombre((String) datos.get("nombre"));
-                if (datos.containsKey("minutos")) m.setMinutosMonitoreo(((Number) datos.get("minutos")).intValue());
-                if (datos.containsKey("activo")) m.setActivo((Boolean) datos.get("activo"));
+        if (m != null) {
+            // MODIFICACIÓN: Dueño O Admin
+            boolean esDuenio = m.getPropietario().getId() == usuarioId;
+            boolean esAdmin = "ADMIN".equals(u.getPermiso());
 
-                return convertirADTO(monitoreoRepository.save(m));
+            if (esDuenio || esAdmin) {
+                if (payload.containsKey("nombre")) m.setNombre((String) payload.get("nombre"));
+                if (payload.containsKey("minutos")) m.setMinutosMonitoreo((int) payload.get("minutos"));
+                if (payload.containsKey("repeticiones")) m.setRepeticiones((int) payload.get("repeticiones"));
+
+                // Si cambias la URL, recuerda que afecta a la entidad PaginaWeb asociada
+                if (payload.containsKey("url")) {
+                    m.getPaginaWeb().setUrl((String) payload.get("url"));
+                }
+
+                return convertirADetalleDTO(monitoreoRepository.save(m));
             }
         }
-        return null;
-    }
-
-    // --- 4. DELETE ---
-    public boolean eliminarMonitoreo(int idMonitoreo, int idUsuario) {
-        Optional<Monitoreo> opt = monitoreoRepository.findById(idMonitoreo);
-        if (opt.isPresent()) {
-            Monitoreo m = opt.get();
-            if (m.getPropietario().getId() == idUsuario) {
-                monitoreoRepository.delete(m);
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // --- 5. LOGICA DE CHEQUEO (Ping) ---
-    @Transactional
-    public MonitoreoDTO ejecutarChequeo(int id) {
-        Monitoreo monitoreo = monitoreoRepository.findById(id).orElse(null);
-        if (monitoreo == null) return null;
-
-        int nuevoEstado = paginaWebService.getRemoteStatus(monitoreo.getPaginaWeb().getUrl());
-
-        monitoreo.setEstado(nuevoEstado);
-        monitoreo.setFechaUltimaRevision(LocalDateTime.now());
-
-        return convertirADTO(monitoreoRepository.save(monitoreo));
-    }
-
-    public PaginaWeb obtenerPaginaPorMonitoreoId(int monitoreoId, int usuarioId) {
-
-        Monitoreo monitoreo = monitoreoRepository.findById(monitoreoId).orElse(null);
-
-        if (monitoreo != null) {
-            boolean esDueno = monitoreo.getPropietario().getId() == usuarioId;
-            boolean esInvitado = monitoreo.getInvitados().stream()
-                    .anyMatch(u -> u.getId() == usuarioId);
-
-            if (esDueno || esInvitado) {
-                return monitoreo.getPaginaWeb();
-            }
-        }
-        return null;
+        return null; // Esto provocará un 403 Forbidden en el controlador
     }
 
     @Transactional
-    public MonitoreoDTO invitarUsuario(int idMonitoreo, int idPropietario, String emailInvitado) {
+    public MonitoreoDTODetalle invitarUsuario(int idMonitoreo, int idPropietario, String emailInvitado) {
         Optional<Monitoreo> optMonitoreo = monitoreoRepository.findById(idMonitoreo);
         Usuario invitado = usuarioService.findByEmail(emailInvitado);
 
         if (optMonitoreo.isPresent() && invitado != null) {
             Monitoreo m = optMonitoreo.get();
-
-            // 1. Validar que solo el dueño puede invitar
-            if (m.getPropietario().getId() == idPropietario) {
-
-                // 2. No invitarse a sí mismo
-                if (m.getPropietario().getId() == invitado.getId()) {
-                    return null;
-                }
-
-                // 3. Añadir al Set (Hibernate gestiona la tabla monitoreo_invitados)
+            if (m.getPropietario().getId() == idPropietario && m.getPropietario().getId() != invitado.getId()) {
                 m.getInvitados().add(invitado);
-                return convertirADTO(monitoreoRepository.save(m));
+                return convertirADetalleDTO(monitoreoRepository.save(m));
             }
         }
         return null;
     }
 
-    // --- 6. CONVERSOR DTO ---
-    public MonitoreoDTO convertirADTO(Monitoreo m) {
-        return MonitoreoDTO.builder()
+    @Transactional
+    public boolean eliminarMonitoreo(int idMonitoreo, int idUsuario) {
+        return monitoreoRepository.findById(idMonitoreo)
+                .filter(m -> m.getPropietario().getId() == idUsuario)
+                .map(m -> {
+                    monitoreoRepository.delete(m);
+                    return true;
+                }).orElse(false);
+    }
+
+    public MonitoreoDTODetalle obtenerDetalleSeguro(int id, int usuarioId) {
+        Monitoreo m = monitoreoRepository.findById(id).orElse(null);
+        Usuario u = usuarioService.findById(usuarioId); // Buscamos al usuario que hace la petición
+
+        if (m != null && u != null) {
+            // Lógica de permisos:
+            boolean esDuenio = m.getPropietario().getId() == usuarioId;
+            boolean esInvitado = m.getInvitados().stream().anyMatch(inv -> inv.getId() == usuarioId);
+            boolean esAdmin = "ADMIN".equalsIgnoreCase(u.getPermiso());
+
+            // SI ES ADMIN, LE DEJAMOS PASAR SIEMPRE
+            if (esDuenio || esInvitado || esAdmin) {
+                return convertirADetalleDTO(m);
+            }
+        }
+        return null; // Si llega aquí, el controlador devolverá 403 (Prohibido)
+    }
+
+    public List<MonitoreoListadoDTO> obtenerTodosLosMonitoreos() {
+        return monitoreoRepository.findAll().stream()
+                .map(this::convertirAListadoDTO)
+                .collect(Collectors.toList());
+    }
+
+    public PaginaWeb obtenerPaginaPorMonitoreoId(int monitoreoId, int usuarioId) {
+        return monitoreoRepository.findById(monitoreoId)
+                .filter(m -> m.getPropietario().getId() == usuarioId ||
+                        m.getInvitados().stream().anyMatch(inv -> inv.getId() == usuarioId))
+                .map(Monitoreo::getPaginaWeb)
+                .orElse(null);
+    }
+
+    // ==========================================
+    // 3. LÓGICA DE CONTROL (CHECK)
+    // ==========================================
+
+    @Transactional
+    public MonitoreoDTODetalle ejecutarChequeo(int id) {
+        return monitoreoRepository.findById(id)
+                .map(m -> {
+                    int nuevoEstado = paginaWebService.getRemoteStatus(m.getPaginaWeb().getUrl());
+                    m.setEstado(nuevoEstado);
+                    m.setFechaUltimaRevision(LocalDateTime.now());
+                    return convertirADetalleDTO(monitoreoRepository.save(m));
+                }).orElse(null);
+    }
+
+    // ==========================================
+    // 4. CONVERSORES Y MAPPERS
+    // ==========================================
+
+    public MonitoreoListadoDTO convertirAListadoDTO(Monitoreo m) {
+        return MonitoreoListadoDTO.builder()
+                .id(m.getId())
+                .nombre(m.getNombre())
+                .propietarioId(m.getPropietario().getId())
+                .ultimoEstado(m.getEstado())
+                .fechaUltimaRevision(m.getFechaUltimaRevision())
+                .activo(m.isActivo())
+                .paginaUrl(m.getPaginaWeb().getUrl())
+                .build();
+    }
+
+    public MonitoreoDTODetalle convertirADetalleDTO(Monitoreo m) {
+        return MonitoreoDTODetalle.builder()
                 .id(m.getId())
                 .nombre(m.getNombre())
                 .minutosMonitoreo(m.getMinutosMonitoreo())
@@ -167,22 +186,22 @@ public class MonitoreoService {
                 .fechaUltimaRevision(m.getFechaUltimaRevision())
                 .activo(m.isActivo())
                 .paginaUrl(m.getPaginaWeb().getUrl())
-                .propietarioId(m.getPropietario().getId())
-
-                // ESTA ES LA LÍNEA QUE FALTA:
-                .invitadosCorreo(m.getInvitados().stream()
-                        .map(Usuario::getEmail)
+                .propietario(mapearUsuarioADTO(m.getPropietario()))
+                .invitados(m.getInvitados().stream()
+                        .map(this::mapearUsuarioADTO)
                         .collect(Collectors.toSet()))
                 .build();
     }
 
-    public List<MonitoreoDTO> obtenerTodosLosMonitoreos() {
-        return monitoreoRepository.findAll().stream()
-                .map(this::convertirADTO)
-                .collect(Collectors.toList());
+    private UsuarioDTO mapearUsuarioADTO(Usuario u) {
+        return UsuarioDTO.builder()
+                .id(u.getId())
+                .nombre(u.getNombre())
+                .email(u.getEmail())
+                .permiso(u.getPermiso())
+                .build();
     }
 
-    // Método auxiliar para limpiar la URL y sacar el dominio
     private String extraerDominio(String url) {
         try {
             String domain = url.replaceFirst("^(https?://)?(www\\.)?", "");
@@ -192,5 +211,4 @@ public class MonitoreoService {
             return "Nueva Página";
         }
     }
-
 }
