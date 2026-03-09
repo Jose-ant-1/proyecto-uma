@@ -59,4 +59,16 @@ public class PaginaWebService {
         }
     }
 
+    // En PaginaWebService.java
+    public PaginaWeb obtenerOCrearPagina(String url, String nombre) {
+        return paginaWebRepository.findByUrl(url)
+                .orElseGet(() -> {
+                    // Si no existe, creamos el objeto nuevo
+                    PaginaWeb nueva = new PaginaWeb();
+                    nueva.setUrl(url);
+                    nueva.setNombre(nombre); // El dominio o nombre descriptivo
+                    return paginaWebRepository.save(nueva);
+                });
+    }
+
 }

@@ -63,29 +63,34 @@ public class MonitoreoService {
     }
 
 
-    public MonitoreoDTODetalle actualizarConfiguracion(int id, int usuarioId, Map<String, Object> payload) {
+    @Transactional
+    public MonitoreoDTODetalle actualizarConfiguracion(int id, int userId, Map<String, Object> payload) {
         Monitoreo m = monitoreoRepository.findById(id).orElse(null);
-        Usuario u = usuarioService.findById(usuarioId); // Obtenemos el usuario que hace la petición
+        if (m == null || m.getPropietario().getId() != userId) return null;
 
-        if (m != null) {
-            // MODIFICACIÓN: Dueño O Admin
-            boolean esDuenio = m.getPropietario().getId() == usuarioId;
-            boolean esAdmin = "ADMIN".equals(u.getPermiso());
+        // 1. Manejo de la URL
+        if (payload.containsKey("url")) {
+            String nuevaUrl = (String) payload.get("url");
 
-            if (esDuenio || esAdmin) {
-                if (payload.containsKey("nombre")) m.setNombre((String) payload.get("nombre"));
-                if (payload.containsKey("minutos")) m.setMinutosMonitoreo((int) payload.get("minutos"));
-                if (payload.containsKey("repeticiones")) m.setRepeticiones((int) payload.get("repeticiones"));
+            // Solo actuamos si la URL realmente cambió
+            if (!nuevaUrl.equals(m.getPaginaWeb().getUrl())) {
+                String nuevoDominio = extraerDominio(nuevaUrl);
 
-                // Si cambias la URL, recuerda que afecta a la entidad PaginaWeb asociada
-                if (payload.containsKey("url")) {
-                    m.getPaginaWeb().setUrl((String) payload.get("url"));
-                }
+                // BUSCAMOS O CREAMOS (MUDANZA)
+                // En lugar de hacer m.getPaginaWeb().setUrl(...), que editaría la fila actual...
+                PaginaWeb nuevaPagina = paginaWebService.obtenerOCrearPagina(nuevaUrl, nuevoDominio);
 
-                return convertirADetalleDTO(monitoreoRepository.save(m));
+                // ...le asignamos al monitoreo la nueva "habitación"
+                m.setPaginaWeb(nuevaPagina);
             }
         }
-        return null; // Esto provocará un 403 Forbidden en el controlador
+
+        // 2. Manejo del resto de campos (estos sí son propios del monitoreo)
+        if (payload.containsKey("nombre")) m.setNombre((String) payload.get("nombre"));
+        if (payload.containsKey("minutos")) m.setMinutosMonitoreo(((Number) payload.get("minutos")).intValue());
+        if (payload.containsKey("repeticiones")) m.setRepeticiones(((Number) payload.get("repeticiones")).intValue());
+
+        return convertirADetalleDTO(monitoreoRepository.save(m));
     }
 
     @Transactional

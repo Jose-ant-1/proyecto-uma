@@ -13,6 +13,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
 import java.util.Arrays;
 import java.util.List;
 
@@ -40,10 +41,9 @@ public class SecurityConfig {
                         // Una vez excluido el /me, el resto de /api/usuarios/** requiere ser ADMIN
                         .requestMatchers("/api/usuarios/**").hasAuthority("ADMIN")
 
-                        // Solo los ADMIN pueden crear, editar o borrar PÁGINAS (según tu planteamiento previo)
-                        .requestMatchers(HttpMethod.POST, "/api/paginas/**").hasAuthority("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/paginas/**").hasAuthority("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/paginas/**").hasAuthority("ADMIN")
+                        // Elimina o comenta las líneas de restricción .hasAuthority("ADMIN") para páginas
+                        // Y asegúrate de que esté bajo .authenticated()
+                        .requestMatchers("/api/paginas/**").authenticated() // Esto permite GET, POST, PUT y DELETE a cualquier logueado
 
                         // 3. ACCESO GENERAL AUTENTICADO
                         // Cualquier usuario logueado puede gestionar sus monitoreos
