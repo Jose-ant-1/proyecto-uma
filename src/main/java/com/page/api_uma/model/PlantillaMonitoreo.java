@@ -13,7 +13,7 @@ import java.util.Set;
 @Builder
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @ToString
-@Table(name = "plantillaPag")
+@Table(name = "plantillaMonitoreo")
 public class PlantillaMonitoreo {
 
     @Id
@@ -26,7 +26,7 @@ public class PlantillaMonitoreo {
     @ManyToMany
     @JoinTable(
             name = "monitoreo_plantillaMon",
-            joinColumns = @JoinColumn(name = "id_plantillaPag"),
+            joinColumns = @JoinColumn(name = "id_plantillaMon"),
             inverseJoinColumns = @JoinColumn(name = "id_monitoreo")
     )
     private Set<Monitoreo> monitoreos;

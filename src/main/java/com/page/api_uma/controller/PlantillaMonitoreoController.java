@@ -2,20 +2,25 @@ package com.page.api_uma.controller;
 
 
 import com.page.api_uma.model.PlantillaMonitoreo;
+import com.page.api_uma.model.Usuario;
 import com.page.api_uma.service.PlantillaMonitoreoService;
+import com.page.api_uma.service.UsuarioService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/plantillaMonitoreo")
 public class PlantillaMonitoreoController {
 
     private final PlantillaMonitoreoService service;
+    private final UsuarioService usuarioService;
 
-    public PlantillaMonitoreoController(PlantillaMonitoreoService service) {
+    public PlantillaMonitoreoController(PlantillaMonitoreoService service, UsuarioService usuarioService) {
         this.service = service;
+        this.usuarioService = usuarioService;
     }
 
     @GetMapping
@@ -38,6 +43,16 @@ public class PlantillaMonitoreoController {
     @PostMapping
     public PlantillaMonitoreo create(@RequestBody PlantillaMonitoreo pagina) {
         return service.save(pagina);
+    }
+
+    @PostMapping("/{id}/aplicar")
+    public ResponseEntity<Void> aplicarPlantilla(@PathVariable Integer id, @RequestBody Map<String, String> payload) {
+        String email = payload.get("email");
+        // Obtenemos al usuario logueado (Pedro) para validar propiedad
+        Usuario actual = usuarioService.getUsuarioAutenticado();
+
+        service.aplicarPlantillaAUsuario(id, email, actual.getId());
+        return ResponseEntity.ok().build();
     }
 
     @PutMapping("/{id}")

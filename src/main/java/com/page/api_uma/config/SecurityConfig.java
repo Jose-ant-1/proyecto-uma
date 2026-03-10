@@ -32,27 +32,27 @@ public class SecurityConfig {
                 .cors(Customizer.withDefaults())
                 .csrf(AbstractHttpConfigurer::disable)
                 .authorizeHttpRequests(auth -> auth
-                        // 1. PRIORIDAD: LOGIN Y PERFIL PROPIO
-                        // Permitimos GET para login y PUT para que el usuario edite su propia info
+                        // 1. PERFIL PROPIO (Prioridad máxima)
                         .requestMatchers(HttpMethod.GET, "/api/usuarios/me").authenticated()
                         .requestMatchers(HttpMethod.PUT, "/api/usuarios/me").authenticated()
 
-                        // 2. RESTRICCIONES DE ADMINISTRADOR
-                        // Una vez excluido el /me, el resto de /api/usuarios/** requiere ser ADMIN
-                        .requestMatchers("/api/usuarios/**").hasAuthority("ADMIN")
+                        // 2. ADMINISTRACIÓN DE USUARIOS (Acceso para Pedro y otros)
+                        // Permitimos ver la lista y ver un perfil concreto a cualquier logueado
+                        .requestMatchers(HttpMethod.GET, "/api/usuarios").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/usuarios/{id}").authenticated()
 
-                        // Elimina o comenta las líneas de restricción .hasAuthority("ADMIN") para páginas
-                        // Y asegúrate de que esté bajo .authenticated()
-                        .requestMatchers("/api/paginas/**").authenticated() // Esto permite GET, POST, PUT y DELETE a cualquier logueado
+                        // RESTRICCIONES DE ADMIN (Solo administradores pueden crear, borrar o editar otros usuarios)
+                        .requestMatchers(HttpMethod.POST, "/api/usuarios").hasAuthority("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/api/usuarios/**").hasAuthority("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/api/usuarios/**").hasAuthority("ADMIN")
 
-                        // 3. ACCESO GENERAL AUTENTICADO
-                        // Cualquier usuario logueado puede gestionar sus monitoreos
+                        // 3. MONITOREOS Y OTROS (Acceso general autenticado)
                         .requestMatchers("/api/monitoreos/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/paginas/**").authenticated()
                         .requestMatchers("/api/plantillaPagina/**").authenticated()
                         .requestMatchers("/api/plantillaUsuario/**").authenticated()
 
-                        // 4. CUALQUIER OTRA PETICIÓN
+                        // 4. RESTO DE PETICIONES
                         .anyRequest().authenticated()
                 )
                 .httpBasic(Customizer.withDefaults());

@@ -88,12 +88,30 @@ public class UsuarioController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UsuarioDTO> update(@PathVariable Integer id, @RequestBody Usuario usuario) {
-        Usuario existe = service.findById(id);
-        if (existe != null) {
-            usuario.setId(id);
-            return ResponseEntity.ok(convertirADTO(service.save(usuario)));
+    public ResponseEntity<UsuarioDTO> update(@PathVariable Integer id, @RequestBody Usuario datosRecibidos) {
+        // 1. Buscamos el usuario real que está en la base de datos
+        Usuario usuarioExistente = service.findById(id);
+
+        if (usuarioExistente != null) {
+            // 2. Actualizamos solo los campos básicos
+            usuarioExistente.setNombre(datosRecibidos.getNombre());
+            usuarioExistente.setEmail(datosRecibidos.getEmail());
+            usuarioExistente.setPermiso(datosRecibidos.getPermiso());
+
+            // 3. LÓGICA DE CONTRASEÑA:
+            // Solo si recibimos una contraseña que no esté vacía, la actualizamos.
+            // Si viene vacía o nula, mantenemos la que ya tenía el usuarioExistente (su hash).
+            if (datosRecibidos.getContrasenia() != null && !datosRecibidos.getContrasenia().isBlank()) {
+                usuarioExistente.setContrasenia(datosRecibidos.getContrasenia());
+            }
+
+            // 4. Guardamos el objeto 'usuarioExistente' (que ya tiene su ID y relaciones intactas)
+            // Tu service.save() ya se encarga de encriptar si no empieza por $2a$
+            Usuario guardado = service.save(usuarioExistente);
+
+            return ResponseEntity.ok(convertirADTO(guardado));
         }
+
         return ResponseEntity.notFound().build();
     }
 

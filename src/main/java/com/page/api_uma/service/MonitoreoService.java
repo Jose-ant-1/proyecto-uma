@@ -14,7 +14,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,10 +24,7 @@ public class MonitoreoService {
     private final PaginaWebService paginaWebService;
     private final UsuarioService usuarioService;
 
-    public MonitoreoService(MonitoreoRepository monitoreoRepository,
-                            PaginaWebRepository paginaWebRepository,
-                            PaginaWebService paginaWebService,
-                            UsuarioService usuarioService) {
+    public MonitoreoService(MonitoreoRepository monitoreoRepository, PaginaWebRepository paginaWebRepository, PaginaWebService paginaWebService, UsuarioService usuarioService) {
         this.monitoreoRepository = monitoreoRepository;
         this.paginaWebRepository = paginaWebRepository;
         this.paginaWebService = paginaWebService;
@@ -62,7 +58,6 @@ public class MonitoreoService {
         return convertirADetalleDTO(monitoreoRepository.save(m));
     }
 
-
     @Transactional
     public MonitoreoDTODetalle actualizarConfiguracion(int id, int userId, Map<String, Object> payload) {
         Monitoreo m = monitoreoRepository.findById(id).orElse(null);
@@ -94,18 +89,26 @@ public class MonitoreoService {
     }
 
     @Transactional
-    public MonitoreoDTODetalle invitarUsuario(int idMonitoreo, int idPropietario, String emailInvitado) {
-        Optional<Monitoreo> optMonitoreo = monitoreoRepository.findById(idMonitoreo);
-        Usuario invitado = usuarioService.findByEmail(emailInvitado);
+    public MonitoreoDTODetalle toggleInvitado(int monitoreoId, int propietarioId, String emailInvitado) {
+        Monitoreo m = monitoreoRepository.findById(monitoreoId)
+                .orElseThrow(() -> new RuntimeException("Monitoreo no encontrado"));
 
-        if (optMonitoreo.isPresent() && invitado != null) {
-            Monitoreo m = optMonitoreo.get();
-            if (m.getPropietario().getId() == idPropietario && m.getPropietario().getId() != invitado.getId()) {
-                m.getInvitados().add(invitado);
-                return convertirADetalleDTO(monitoreoRepository.save(m));
-            }
+        if (m.getPropietario().getId() != propietarioId) return null;
+
+        Usuario invitado = usuarioService.buscarPorEmail(emailInvitado);
+        if (invitado == null) return null;
+
+        // Con el @EqualsAndHashCode.Include en Usuario, esto ya funcionará perfecto:
+        if (m.getInvitados().contains(invitado)) {
+            m.getInvitados().remove(invitado);
+        } else {
+            m.getInvitados().add(invitado);
         }
-        return null;
+
+        // Guardamos y forzamos la escritura en la tabla intermedia 'monitoreo_invitados'
+        Monitoreo guardado = monitoreoRepository.saveAndFlush(m);
+
+        return convertirADetalleDTO(guardado);
     }
 
     @Transactional
@@ -136,7 +139,7 @@ public class MonitoreoService {
         return null; // Si llega aquí, el controlador devolverá 403 (Prohibido)
     }
 
-    public List<MonitoreoListadoDTO> obtenerTodosLosMonitoreos() {
+    public List<MonitoreoListadoDTO> findAll() {
         return monitoreoRepository.findAll().stream()
                 .map(this::convertirAListadoDTO)
                 .collect(Collectors.toList());
@@ -150,10 +153,6 @@ public class MonitoreoService {
                 .orElse(null);
     }
 
-    // ==========================================
-    // 3. LÓGICA DE CONTROL (CHECK)
-    // ==========================================
-
     @Transactional
     public MonitoreoDTODetalle ejecutarChequeo(int id) {
         return monitoreoRepository.findById(id)
@@ -164,10 +163,6 @@ public class MonitoreoService {
                     return convertirADetalleDTO(monitoreoRepository.save(m));
                 }).orElse(null);
     }
-
-    // ==========================================
-    // 4. CONVERSORES Y MAPPERS
-    // ==========================================
 
     public MonitoreoListadoDTO convertirAListadoDTO(Monitoreo m) {
         return MonitoreoListadoDTO.builder()
@@ -198,6 +193,18 @@ public class MonitoreoService {
                 .build();
     }
 
+    @Transactional
+    public MonitoreoDTODetalle eliminarInvitado(int monitoreoId, int propietarioId, String emailInvitado) {
+        Monitoreo m = monitoreoRepository.findById(monitoreoId).orElse(null);
+        Usuario invitado = usuarioService.buscarPorEmail(emailInvitado);
+
+        if (m != null && m.getPropietario().getId() == propietarioId && invitado != null) {
+            m.getInvitados().remove(invitado);
+            return convertirADetalleDTO(monitoreoRepository.save(m));
+        }
+        return null;
+    }
+
     private UsuarioDTO mapearUsuarioADTO(Usuario u) {
         return UsuarioDTO.builder()
                 .id(u.getId())
@@ -216,4 +223,5 @@ public class MonitoreoService {
             return "Nueva Página";
         }
     }
+
 }

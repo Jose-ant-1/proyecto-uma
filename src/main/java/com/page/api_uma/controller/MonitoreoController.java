@@ -67,7 +67,7 @@ public class MonitoreoController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
         // Este método en el service ya devuelve List<MonitoreoListadoDTO>
-        return ResponseEntity.ok(monitoreoService.obtenerTodosLosMonitoreos());
+        return ResponseEntity.ok(monitoreoService.findAll());
     }
 
     // --- 3. READ ONE (MODIFICADO PARA DETALLE DTO) ---
@@ -110,13 +110,28 @@ public class MonitoreoController {
         return actualizado != null ? ResponseEntity.ok(actualizado) : ResponseEntity.notFound().build();
     }
 
+
     @PutMapping("/{id}/invitar")
     public ResponseEntity<MonitoreoDTODetalle> invitar(@PathVariable int id, @RequestBody Map<String, String> payload) {
         String emailInvitado = payload.get("email");
         if (emailInvitado == null || emailInvitado.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
-        MonitoreoDTODetalle actualizado = monitoreoService.invitarUsuario(id, getActual().getId(), emailInvitado);
+
+        // Llamamos al service pasando el ID del monitoreo, el ID del user logueado y el email
+        MonitoreoDTODetalle actualizado = monitoreoService.toggleInvitado(id, getActual().getId(), emailInvitado);
+
+        if (actualizado == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
+        return ResponseEntity.ok(actualizado);
+    }
+
+    @DeleteMapping("/{id}/invitar")
+    public ResponseEntity<MonitoreoDTODetalle> quitarInvitado(@PathVariable int id, @RequestParam String email) {
+        MonitoreoDTODetalle actualizado = monitoreoService.eliminarInvitado(id, getActual().getId(), email);
         return actualizado != null ? ResponseEntity.ok(actualizado) : ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
+
 }

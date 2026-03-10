@@ -38,7 +38,6 @@ public class UsuarioService implements UserDetailsService {
         return usuarioRepository.findById(id).orElse(null);
     }
 
-    // UsuarioService.java corregido
     public Usuario save(Usuario usuario) {
         if (usuario.getContrasenia() != null && !usuario.getContrasenia().isBlank()) {
             // IMPORTANTE: Solo encriptar si NO es ya un hash de BCrypt
