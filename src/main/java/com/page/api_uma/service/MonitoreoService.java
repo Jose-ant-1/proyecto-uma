@@ -51,7 +51,7 @@ public class MonitoreoService {
         m.setNombre(nombreMonitoreo);
         m.setPaginaWeb(pagina);
         m.setPropietario(propietario);
-        m.setMinutosMonitoreo(minutos);
+        m.setMinutos(minutos);
         m.setRepeticiones(repeticiones);
         m.setActivo(true);
 
@@ -82,7 +82,7 @@ public class MonitoreoService {
 
         // 2. Manejo del resto de campos (estos sí son propios del monitoreo)
         if (payload.containsKey("nombre")) m.setNombre((String) payload.get("nombre"));
-        if (payload.containsKey("minutos")) m.setMinutosMonitoreo(((Number) payload.get("minutos")).intValue());
+        if (payload.containsKey("minutos")) m.setMinutos(((Number) payload.get("minutos")).intValue());
         if (payload.containsKey("repeticiones")) m.setRepeticiones(((Number) payload.get("repeticiones")).intValue());
 
         return convertirADetalleDTO(monitoreoRepository.save(m));
@@ -180,7 +180,7 @@ public class MonitoreoService {
         return MonitoreoDTODetalle.builder()
                 .id(m.getId())
                 .nombre(m.getNombre())
-                .minutosMonitoreo(m.getMinutosMonitoreo())
+                .minutos(m.getMinutos())
                 .repeticiones(m.getRepeticiones())
                 .ultimoEstado(m.getEstado())
                 .fechaUltimaRevision(m.getFechaUltimaRevision())

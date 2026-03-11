@@ -31,7 +31,7 @@ public class MonitoreoTaskService {
         for (Monitoreo m : monitoreos) {
             // Verificamos si toca o si nunca se ha revisado (null)
             if (m.getFechaUltimaRevision() == null ||
-                    ahora.isAfter(m.getFechaUltimaRevision().plusMinutes(m.getMinutosMonitoreo()))) {
+                    ahora.isAfter(m.getFechaUltimaRevision().plusMinutes(m.getMinutos()))) {
 
                 realizarCheck(m);
             }

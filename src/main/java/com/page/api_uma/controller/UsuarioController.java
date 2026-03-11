@@ -26,10 +26,9 @@ public class UsuarioController {
     // En UsuarioController.java (Sugerencia para que el usuario se edite a sí mismo)
     @PutMapping("/me")
     public ResponseEntity<Usuario> updateMe(@RequestBody Usuario datosRecibidos) {
-        // 1. Obtenemos el usuario persistido actual de la sesión
+
         Usuario actual = service.getUsuarioAutenticado();
 
-        // 2. Actualizamos solo los campos que permitimos cambiar desde el perfil
         actual.setNombre(datosRecibidos.getNombre());
         actual.setEmail(datosRecibidos.getEmail());
 
@@ -117,14 +116,11 @@ public class UsuarioController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
-        // Solo un ADMIN o el propio usuario pueden borrar la cuenta
         if (!tienePermiso(id)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
 
         service.deleteById(id);
         return ResponseEntity.noContent().build();
     }
-
-    // --- UTILIDADES ---
 
     private UsuarioDTO convertirADTO(Usuario u) {
         return UsuarioDTO.builder()

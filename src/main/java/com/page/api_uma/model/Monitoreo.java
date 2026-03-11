@@ -27,7 +27,7 @@ public class Monitoreo {
 
     private String nombre;
     private int repeticiones;
-    private int minutosMonitoreo;
+    private int minutos;
 
     // --- NUEVOS CAMPOS DE ESTADO ---
     private Integer estado; // Almacenará el código HTTP (200, 404, 500...)

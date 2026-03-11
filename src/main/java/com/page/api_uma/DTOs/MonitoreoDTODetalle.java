@@ -17,7 +17,7 @@ import java.util.Set;
 public class MonitoreoDTODetalle {
     private int id;
     private String nombre;
-    private int minutosMonitoreo;
+    private int minutos;
     private int repeticiones;
 
     private UsuarioDTO propietario;
