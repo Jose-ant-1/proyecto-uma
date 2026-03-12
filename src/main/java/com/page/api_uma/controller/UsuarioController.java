@@ -63,12 +63,6 @@ public class UsuarioController {
         return ResponseEntity.ok(usuarios);
     }
 
-    @GetMapping("/buscar")
-    public ResponseEntity<UsuarioDTO> findByEmail(@RequestParam String email) {
-        Usuario usuario = service.buscarPorEmail(email);
-        return ResponseEntity.ok(convertirADTO(usuario));
-    }
-
     @GetMapping("/{id}")
     public ResponseEntity<UsuarioDTO> findById(@PathVariable Integer id) {
         Usuario usuario = service.findById(id);
@@ -120,6 +114,15 @@ public class UsuarioController {
 
         service.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/buscar")
+    public ResponseEntity<List<UsuarioDTO>> buscar(@RequestParam String q) {
+        List<Usuario> usuarios = service.buscarUsuarios(q);
+        List<UsuarioDTO> dtos = usuarios.stream()
+                .map(this::convertirADTO) // Usando tu método existente
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
     }
 
     private UsuarioDTO convertirADTO(Usuario u) {

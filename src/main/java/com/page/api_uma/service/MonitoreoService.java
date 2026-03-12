@@ -5,6 +5,7 @@ import com.page.api_uma.DTOs.MonitoreoListadoDTO;
 import com.page.api_uma.DTOs.UsuarioDTO;
 import com.page.api_uma.model.Monitoreo;
 import com.page.api_uma.model.PaginaWeb;
+import com.page.api_uma.model.PlantillaMonitoreo;
 import com.page.api_uma.model.Usuario;
 import com.page.api_uma.repository.MonitoreoRepository;
 import com.page.api_uma.repository.PaginaWebRepository;
@@ -15,6 +16,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 public class MonitoreoService {
@@ -59,33 +61,20 @@ public class MonitoreoService {
     }
 
     @Transactional
-    public MonitoreoDTODetalle actualizarConfiguracion(int id, int userId, Map<String, Object> payload) {
+    public MonitoreoDTODetalle actualizar(int id, Map<String, Object> payload, int usuarioId, String permiso) {
         Monitoreo m = monitoreoRepository.findById(id).orElse(null);
-        if (m == null || m.getPropietario().getId() != userId) return null;
 
-        // 1. Manejo de la URL
-        if (payload.containsKey("url")) {
-            String nuevaUrl = (String) payload.get("url");
+        // Lógica de autorización: Dueño o ADMIN
+        boolean esAutorizado = m != null && (m.getPropietario().getId() == usuarioId || "ADMIN".equals(permiso));
 
-            // Solo actuamos si la URL realmente cambió
-            if (!nuevaUrl.equals(m.getPaginaWeb().getUrl())) {
-                String nuevoDominio = extraerDominio(nuevaUrl);
+        if (esAutorizado) {
+            if (payload.containsKey("nombre")) m.setNombre((String) payload.get("nombre"));
+            if (payload.containsKey("minutos")) m.setMinutos(((Number) payload.get("minutos")).intValue());
+            if (payload.containsKey("repeticiones")) m.setRepeticiones(((Number) payload.get("repeticiones")).intValue());
 
-                // BUSCAMOS O CREAMOS (MUDANZA)
-                // En lugar de hacer m.getPaginaWeb().setUrl(...), que editaría la fila actual...
-                PaginaWeb nuevaPagina = paginaWebService.obtenerOCrearPagina(nuevaUrl, nuevoDominio);
-
-                // ...le asignamos al monitoreo la nueva "habitación"
-                m.setPaginaWeb(nuevaPagina);
-            }
+            return convertirADetalleDTO(monitoreoRepository.save(m));
         }
-
-        // 2. Manejo del resto de campos (estos sí son propios del monitoreo)
-        if (payload.containsKey("nombre")) m.setNombre((String) payload.get("nombre"));
-        if (payload.containsKey("minutos")) m.setMinutos(((Number) payload.get("minutos")).intValue());
-        if (payload.containsKey("repeticiones")) m.setRepeticiones(((Number) payload.get("repeticiones")).intValue());
-
-        return convertirADetalleDTO(monitoreoRepository.save(m));
+        return null;
     }
 
     @Transactional
@@ -112,13 +101,28 @@ public class MonitoreoService {
     }
 
     @Transactional
-    public boolean eliminarMonitoreo(int idMonitoreo, int idUsuario) {
-        return monitoreoRepository.findById(idMonitoreo)
-                .filter(m -> m.getPropietario().getId() == idUsuario)
-                .map(m -> {
-                    monitoreoRepository.delete(m);
-                    return true;
-                }).orElse(false);
+    public boolean eliminar(int id, int usuarioId, String permiso) {
+        Monitoreo m = monitoreoRepository.findById(id).orElse(null);
+        if (m == null) return false;
+
+        // Validación de seguridad (Dueño o ADMIN)
+        boolean esAutorizado = m.getPropietario().getId() == usuarioId || "ADMIN".equals(permiso);
+
+        if (esAutorizado) {
+            // PASO 1: Limpiar invitados (Como Monitoreo es dueño aquí, clear() suele bastar,
+            // pero para asegurar borramos la colección)
+            m.getInvitados().clear();
+            monitoreoRepository.saveAndFlush(m);
+
+            // PASO 2: Limpiar la tabla de plantillas mediante SQL directo
+            // Esto elimina las filas en 'monitoreo_plantilla_mon' donde esté este monitoreo
+            monitoreoRepository.eliminarRelacionesConPlantillas(id);
+
+            // PASO 3: Ahora el monitoreo está "suelto" y se puede borrar sin errores de FK
+            monitoreoRepository.delete(m);
+            return true;
+        }
+        return false;
     }
 
     public MonitoreoDTODetalle obtenerDetalleSeguro(int id, int usuarioId) {
@@ -191,6 +195,32 @@ public class MonitoreoService {
                         .map(this::mapearUsuarioADTO)
                         .collect(Collectors.toSet()))
                 .build();
+    }
+
+    public List<MonitoreoListadoDTO> buscarAccesibles(int usuarioId, String termino) {
+        // 1. Buscamos al usuario (usando el método que ya tienes en el service)
+        Usuario usuario = usuarioService.findById(usuarioId);
+
+        if (usuario == null) return List.of();
+
+        // 2. Unimos sus monitoreos propios y los que es invitado
+        Stream<Monitoreo> streamUnificado = Stream.concat(
+                usuario.getMonitoreosPropios().stream(),
+                usuario.getMonitoreosInvitado().stream()
+        );
+
+        // 3. Filtramos por el término y convertimos a DTO
+        return streamUnificado
+                .filter(m -> {
+                    if (termino == null || termino.isBlank()) return true;
+                    String t = termino.toLowerCase();
+                    // Buscamos en nombre del monitoreo OR en la URL de la página
+                    return m.getNombre().toLowerCase().contains(t) ||
+                            (m.getPaginaWeb() != null && m.getPaginaWeb().getUrl().toLowerCase().contains(t));
+                })
+                .map(this::convertirAListadoDTO)
+                .distinct()
+                .collect(Collectors.toList());
     }
 
     @Transactional

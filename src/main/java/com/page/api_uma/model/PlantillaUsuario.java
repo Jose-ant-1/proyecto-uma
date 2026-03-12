@@ -23,6 +23,10 @@ public class PlantillaUsuario {
     @Column(nullable = false)
     private String nombre;
 
+    @ManyToOne
+    @JoinColumn(name = "id_propietario", nullable = false)
+    private Usuario propietario;
+
     @ManyToMany
     @JoinTable(
             name = "usuario_plantillaUsuar",

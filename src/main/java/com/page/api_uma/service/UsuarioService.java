@@ -80,6 +80,13 @@ public class UsuarioService implements UserDetailsService {
         return usuario;
     }
 
+    public List<Usuario> buscarUsuarios(String termino) {
+        if (termino == null || termino.isBlank()) {
+            return usuarioRepository.findAll();
+        }
+        return usuarioRepository.buscarPorTermino(termino);
+    }
+
     /**
      * Requerido por Spring Security para la autenticación.
      */

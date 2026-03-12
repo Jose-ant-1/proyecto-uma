@@ -59,7 +59,13 @@ public class PaginaWebService {
         }
     }
 
-    // En PaginaWebService.java
+    public List<PaginaWeb> buscarPaginas(String termino) {
+        if (termino == null || termino.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return paginaWebRepository.buscarPorTermino(termino);
+    }
+
     public PaginaWeb obtenerOCrearPagina(String url, String nombre) {
         return paginaWebRepository.findByUrl(url)
                 .orElseGet(() -> {

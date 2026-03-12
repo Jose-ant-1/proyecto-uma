@@ -90,6 +90,11 @@ public class PaginaWebController {
         return ResponseEntity.noContent().build();
     }
 
+    @GetMapping("/buscar")
+    public ResponseEntity<List<PaginaWeb>> buscar(@RequestParam String q) {
+        return ResponseEntity.ok(paginaService.buscarPaginas(q));
+    }
+
     /**
      * HELPER: Obtiene el usuario autenticado desde el contexto de seguridad.
      * Se usa para identificar quién hace la petición basándose en su Token/Sesión.

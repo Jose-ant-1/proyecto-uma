@@ -52,6 +52,16 @@ public class MonitoreoController {
                 .collect(Collectors.toList()));
     }
 
+    @GetMapping("/buscar")
+    public ResponseEntity<List<MonitoreoListadoDTO>> buscarMonitoreos(@RequestParam(required = false) String termino) {
+        Usuario actual = getActual();
+
+        // Llamamos a un nuevo método en el service que junte y filtre
+        List<MonitoreoListadoDTO> resultados = monitoreoService.buscarAccesibles(actual.getId(), termino);
+
+        return ResponseEntity.ok(resultados);
+    }
+
     @GetMapping("/colaboraciones")
     public ResponseEntity<List<MonitoreoListadoDTO>> getMonitoreosInvitado() {
         Usuario actual = getActual();
@@ -92,14 +102,18 @@ public class MonitoreoController {
     // --- 4. UPDATE ---
     @PutMapping("/{id}")
     public ResponseEntity<MonitoreoDTODetalle> update(@PathVariable int id, @RequestBody Map<String, Object> payload) {
-        MonitoreoDTODetalle actualizado = monitoreoService.actualizarConfiguracion(id, getActual().getId(), payload);
+        Usuario actual = getActual();
+        // Añadimos actual.getPermiso() a la llamada
+        MonitoreoDTODetalle actualizado = monitoreoService.actualizar(id, payload, actual.getId(), actual.getPermiso());
         return actualizado != null ? ResponseEntity.ok(actualizado) : ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
     // --- 5. DELETE ---
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable int id) {
-        boolean eliminado = monitoreoService.eliminarMonitoreo(id, getActual().getId());
+        Usuario actual = getActual();
+        // Añadimos actual.getPermiso() a la llamada
+        boolean eliminado = monitoreoService.eliminar(id, actual.getId(), actual.getPermiso());
         return eliminado ? ResponseEntity.noContent().build() : ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 
