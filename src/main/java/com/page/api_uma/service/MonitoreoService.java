@@ -87,12 +87,19 @@ public class MonitoreoService {
         Usuario invitado = usuarioService.buscarPorEmail(emailInvitado);
         if (invitado == null) return null;
 
+        if(m.getPropietario().getId() == invitado.getId()){
+            return null;
+        }
         // Con el @EqualsAndHashCode.Include en Usuario, esto ya funcionará perfecto:
-        if (m.getInvitados().contains(invitado)) {
-            m.getInvitados().remove(invitado);
-        } else {
+        if (!m.getInvitados().contains(invitado)) {
             m.getInvitados().add(invitado);
         }
+        else{
+            return null;
+        }
+        /*else {
+            m.getInvitados().remove(invitado);
+        }*/
 
         // Guardamos y forzamos la escritura en la tabla intermedia 'monitoreo_invitados'
         Monitoreo guardado = monitoreoRepository.saveAndFlush(m);
