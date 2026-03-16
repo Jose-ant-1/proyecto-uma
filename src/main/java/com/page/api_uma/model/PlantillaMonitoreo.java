@@ -31,5 +31,9 @@ public class PlantillaMonitoreo {
     )
     private Set<Monitoreo> monitoreos;
 
+    // En PlantillaMonitoreo.java
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_propietario", nullable = false)
+    private Usuario propietario;
 
 }

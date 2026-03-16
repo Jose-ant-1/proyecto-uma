@@ -79,34 +79,21 @@ public class MonitoreoService {
 
     @Transactional
     public MonitoreoDTODetalle toggleInvitado(int monitoreoId, int propietarioId, String emailInvitado) {
-        Monitoreo m = monitoreoRepository.findById(monitoreoId)
-                .orElseThrow(() -> new RuntimeException("Monitoreo no encontrado"));
-
-        if (m.getPropietario().getId() != propietarioId) return null;
-
+        Monitoreo m = monitoreoRepository.findById(monitoreoId).orElse(null);
         Usuario invitado = usuarioService.buscarPorEmail(emailInvitado);
-        if (invitado == null) return null;
 
-        if(m.getPropietario().getId() == invitado.getId()){
-            return null;
+        // REGLA DE ORO: Si el invitado es el mismo que el dueño, no hacemos nada
+        if (invitado != null && invitado.getId() == propietarioId) {
+            return convertirADetalleDTO(m); // Salimos sin añadir
         }
-        // Con el @EqualsAndHashCode.Include en Usuario, esto ya funcionará perfecto:
-        if (!m.getInvitados().contains(invitado)) {
+
+        if (m != null && m.getPropietario().getId() == propietarioId && invitado != null) {
+            if (m.getInvitados().contains(invitado)) return convertirADetalleDTO(m);
             m.getInvitados().add(invitado);
+            return convertirADetalleDTO(monitoreoRepository.save(m));
         }
-        else{
-            return null;
-        }
-        /*else {
-            m.getInvitados().remove(invitado);
-        }*/
-
-        // Guardamos y forzamos la escritura en la tabla intermedia 'monitoreo_invitados'
-        Monitoreo guardado = monitoreoRepository.saveAndFlush(m);
-
-        return convertirADetalleDTO(guardado);
+        return null;
     }
-
     @Transactional
     public boolean eliminar(int id, int usuarioId, String permiso) {
         Monitoreo m = monitoreoRepository.findById(id).orElse(null);
@@ -236,6 +223,12 @@ public class MonitoreoService {
         Usuario invitado = usuarioService.buscarPorEmail(emailInvitado);
 
         if (m != null && m.getPropietario().getId() == propietarioId && invitado != null) {
+            // SI NO ESTÁ EN LA LISTA: No hacemos nada, devolvemos el actual
+            if (!m.getInvitados().contains(invitado)) {
+                return convertirADetalleDTO(m);
+            }
+
+            // SI ESTÁ: Lo quitamos
             m.getInvitados().remove(invitado);
             return convertirADetalleDTO(monitoreoRepository.save(m));
         }

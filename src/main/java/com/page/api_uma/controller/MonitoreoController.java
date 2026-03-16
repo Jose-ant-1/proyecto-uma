@@ -132,7 +132,7 @@ public class MonitoreoController {
             return ResponseEntity.badRequest().build();
         }
 
-        // Llamamos al service pasando el ID del monitoreo, el ID del user logueado y el email
+        // Si el usuario ya existe, el service devolverá el DTO sin error
         MonitoreoDTODetalle actualizado = monitoreoService.toggleInvitado(id, getActual().getId(), emailInvitado);
 
         if (actualizado == null) {
@@ -144,8 +144,13 @@ public class MonitoreoController {
 
     @DeleteMapping("/{id}/invitar")
     public ResponseEntity<MonitoreoDTODetalle> quitarInvitado(@PathVariable int id, @RequestParam String email) {
+        // Si el usuario no estaba invitado, el service devolverá el DTO sin error
         MonitoreoDTODetalle actualizado = monitoreoService.eliminarInvitado(id, getActual().getId(), email);
-        return actualizado != null ? ResponseEntity.ok(actualizado) : ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+
+        if (actualizado == null) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        return ResponseEntity.ok(actualizado);
     }
 
 }
