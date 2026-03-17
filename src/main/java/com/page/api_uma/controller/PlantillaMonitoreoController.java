@@ -8,6 +8,7 @@ import com.page.api_uma.service.UsuarioService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 
@@ -24,8 +25,8 @@ public class PlantillaMonitoreoController {
     }
 
     @GetMapping
-    public List<PlantillaMonitoreo> findAll() {
-        return service.findAll();
+    public List<PlantillaMonitoreo> findAll(Principal principal) {
+        return service.findByPropietario(principal.getName());
     }
 
     @GetMapping("/{id}")

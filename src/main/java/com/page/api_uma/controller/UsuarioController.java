@@ -25,22 +25,42 @@ public class UsuarioController {
 
     // En UsuarioController.java (Sugerencia para que el usuario se edite a sí mismo)
     @PutMapping("/me")
-    public ResponseEntity<Usuario> updateMe(@RequestBody Usuario datosRecibidos) {
-
+    public ResponseEntity<?> updateMe(@RequestBody Usuario datosRecibidos) {
         Usuario actual = service.getUsuarioAutenticado();
 
-        actual.setNombre(datosRecibidos.getNombre());
-        actual.setEmail(datosRecibidos.getEmail());
+        // 1. Validar nombre y email (ya lo teníamos)
+        String nombreLimpio = datosRecibidos.getNombre() != null ? datosRecibidos.getNombre().trim() : "";
+        String emailLimpio = datosRecibidos.getEmail() != null ? datosRecibidos.getEmail().trim() : "";
 
-        // 3. Verificamos si se ha enviado una nueva contraseña
-        if (datosRecibidos.getContrasenia() != null && !datosRecibidos.getContrasenia().isBlank()) {
-            actual.setContrasenia(datosRecibidos.getContrasenia());
+        if (nombreLimpio.isEmpty() || emailLimpio.isEmpty()) {
+            return ResponseEntity.badRequest().body("El nombre y el email no pueden estar vacíos.");
         }
 
-        // 4. Guardamos usando tu método 'save' que ya encripta
-        Usuario guardado = service.save(actual);
+        actual.setNombre(nombreLimpio);
+        actual.setEmail(emailLimpio);
 
-        return ResponseEntity.ok(guardado);
+        // 2. NUEVA VALIDACIÓN DE CONTRASEÑA
+        if (datosRecibidos.getContrasenia() != null) {
+            String passNueva = datosRecibidos.getContrasenia();
+
+            // Si el usuario intentó mandar algo que solo son espacios o está vacío
+            if (passNueva.isBlank()) {
+                // No hacemos nada o devolvemos error.
+                // En este caso, si el usuario está editando su PERFIL (nombre/email),
+                // simplemente ignoramos el campo de contraseña si viene vacío/blanco.
+                // Pero si es un cambio explícito de password, lanzamos error:
+                if (!passNueva.isEmpty()) {
+                    return ResponseEntity.badRequest().body("La contraseña no puede consistir solo en espacios.");
+                }
+            } else if (passNueva.length() < 4) {
+                return ResponseEntity.badRequest().body("La contraseña debe tener al menos 4 caracteres.");
+            } else {
+                actual.setContrasenia(passNueva);
+            }
+        }
+
+        Usuario guardado = service.save(actual);
+        return ResponseEntity.ok(convertirADTO(guardado));
     }
 
     // UsuarioController.java

@@ -37,8 +37,12 @@ public class MonitoreoController {
         String url = (String) payload.get("url");
         String nombreMonitoreo = (String) payload.get("nombre");
         int minutos = ((Number) payload.get("minutos")).intValue();
-        int repeticiones = ((Number) payload.getOrDefault("repeticiones", 3)).intValue();
+        int repeticiones = ((Number) payload.get("repeticiones")).intValue();
 
+        // VALIDACIÓN DE SEGURIDAD
+        if (minutos < 1 || repeticiones < 0) {
+            return ResponseEntity.badRequest().build();
+        }
         MonitoreoDTODetalle nuevo = monitoreoService.crearMonitoreo(actual, url, nombreMonitoreo, minutos, repeticiones);
         return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
     }

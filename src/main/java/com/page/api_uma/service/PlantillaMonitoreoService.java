@@ -2,9 +2,11 @@ package com.page.api_uma.service;
 
 import com.page.api_uma.model.Monitoreo;
 import com.page.api_uma.model.PlantillaMonitoreo;
+import com.page.api_uma.model.PlantillaUsuario;
 import com.page.api_uma.model.Usuario;
 import com.page.api_uma.repository.MonitoreoRepository;
 import com.page.api_uma.repository.PlantillaMonitoreoRepository;
+import com.page.api_uma.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,12 +19,14 @@ public class PlantillaMonitoreoService {
     private final PlantillaMonitoreoRepository plantillaMonitoreoRepository;
     private final UsuarioService usuarioService;
     private final MonitoreoRepository monitoreoRepository;
+    private final UsuarioRepository usuarioRepository;
 
 
-    public PlantillaMonitoreoService(PlantillaMonitoreoRepository plantillaMonitoreoRepository, UsuarioService usuarioService, MonitoreoRepository monitoreoRepository) {
+    public PlantillaMonitoreoService(PlantillaMonitoreoRepository plantillaMonitoreoRepository, UsuarioService usuarioService, MonitoreoRepository monitoreoRepository, UsuarioRepository usuarioRepository) {
         this.plantillaMonitoreoRepository = plantillaMonitoreoRepository;
         this.usuarioService = usuarioService;
         this.monitoreoRepository = monitoreoRepository;
+        this.usuarioRepository = usuarioRepository;
     }
 
     public List<PlantillaMonitoreo> findAll() {
@@ -57,6 +61,14 @@ public class PlantillaMonitoreoService {
                 .allMatch(m -> m.getPropietario().getId() == usuarioId);
     }
 
+    public List<PlantillaMonitoreo> findByPropietario(String email) {
+        // Solución para "Cannot resolve method orElseThrow"
+        Usuario owner = java.util.Optional.ofNullable(usuarioRepository.findByEmail(email))
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        return plantillaMonitoreoRepository.findByPropietario(owner);
+    }
+
     @Transactional
     public void aplicarPlantillaAUsuario(int plantillaId, String emailInvitado, int propietarioId) {
         // 1. Buscamos la plantilla
@@ -79,26 +91,5 @@ public class PlantillaMonitoreoService {
         }
     }
 
-    @Transactional
-    public void aplicarPlantillaAUsuario(int plantillaId, String emailInvitado) {
-        PlantillaMonitoreo plantilla = plantillaMonitoreoRepository.findById(plantillaId).orElse(null);
-        Usuario invitado = usuarioService.buscarPorEmail(emailInvitado);
-
-        if (plantilla != null && invitado != null) {
-            plantilla.getMonitoreos().forEach(monitoreo -> {
-                // REGLA DE ORO:
-                // 1. Que el invitado no sea el dueño del monitoreo
-                // 2. Que el invitado no esté ya en la lista de invitados
-                boolean esPropietario = monitoreo.getPropietario().getId() == invitado.getId();
-                boolean yaEstaInvitado = monitoreo.getInvitados().contains(invitado);
-
-                if (!esPropietario && !yaEstaInvitado) {
-                    monitoreo.getInvitados().add(invitado);
-                    // Al ser @Transactional y estar la entidad gestionada,
-                    // se guardará automáticamente al finalizar el método.
-                }
-            });
-        }
-    }
 
 }
