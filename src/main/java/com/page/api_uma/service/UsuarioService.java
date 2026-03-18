@@ -1,7 +1,7 @@
 package com.page.api_uma.service;
 
 import com.page.api_uma.model.Monitoreo;
-import com.page.api_uma.model.PaginaWeb;
+import com.page.api_uma.model.PlantillaUsuario;
 import com.page.api_uma.model.Usuario;
 import com.page.api_uma.repository.UsuarioRepository;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -48,8 +48,29 @@ public class UsuarioService implements UserDetailsService {
         return usuarioRepository.save(usuario);
     }
 
-    public void deleteById(Integer id) {
-        usuarioRepository.deleteById(id);
+    @Transactional
+    public void deleteById(Integer usuarioId) {
+        Usuario usuario = usuarioRepository.findById(usuarioId)
+                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+
+        // Limpiar donde es INVITADO en monitoreos ajenos
+        // Esto elimina la entrada en la tabla intermedia 'monitoreo_invitados'
+        for (Monitoreo m : usuario.getMonitoreosInvitado()) {
+            m.getInvitados().remove(usuario);
+        }
+        usuario.getMonitoreosInvitado().clear();
+
+        // Limpiar donde pertenece a PLANTILLAS de otros
+        // Esto elimina la entrada en 'usuario_plantillaUsuar'
+        for (PlantillaUsuario pu : usuario.getPlantillaUsuarios()) {
+            pu.getUsuarios().remove(usuario);
+        }
+        usuario.getPlantillaUsuarios().clear();
+
+        // El borrado final
+        // Al tener CascadeType.ALL y orphanRemoval=true en sus listas "Propias",
+        // Spring borrará automáticamente sus Monitoreos y Plantillas.
+        usuarioRepository.delete(usuario);
     }
 
     @Transactional(readOnly = true)
@@ -57,10 +78,9 @@ public class UsuarioService implements UserDetailsService {
         return usuarioRepository.findByEmail(email);
     }
 
-    /**
-     * REVISADO: Ahora obtenemos las páginas a través de los monitoreos.
-     * Un usuario "tiene" páginas si es dueño de un monitoreo o invitado a uno.
-     */
+
+    // Un usuario "tiene" páginas si es dueño de un monitoreo o invitado a uno.
+
     public Set<Monitoreo> findMonitoreosAccessibles(Integer usuarioId) {
         Usuario usuario = usuarioRepository.findById(usuarioId).orElse(null);
         if (usuario == null) {
@@ -87,9 +107,9 @@ public class UsuarioService implements UserDetailsService {
         return usuarioRepository.buscarPorTermino(termino);
     }
 
-    /**
-     * Requerido por Spring Security para la autenticación.
-     */
+
+     // Requerido por Spring Security para la autenticación.
+
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         Usuario usuario = usuarioRepository.findByEmail(email);
@@ -101,9 +121,9 @@ public class UsuarioService implements UserDetailsService {
                 .build();
     }
 
-    /**
-     * Método central de seguridad: identifica al usuario logueado en la sesión actual.
-     */
+
+     // Método central de seguridad: identifica al usuario logueado en la sesión actual.
+
     public Usuario getUsuarioAutenticado() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return usuarioRepository.findByEmail(email);

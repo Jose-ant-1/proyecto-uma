@@ -43,23 +43,19 @@ public class PlantillaMonitoreoController {
 
     @PostMapping
     public PlantillaMonitoreo create(@RequestBody PlantillaMonitoreo pagina) {
-        // 1. Obtenemos el usuario autenticado (el que está usando la app)
+        // Obtenemos el usuario autenticado
         Usuario actual = usuarioService.getUsuarioAutenticado();
-
-        // 2. Le asignamos ese usuario como propietario a la plantilla
-        // Esto rellena la columna 'id_propietario' que te está dando error
+        // Le asignamos ese usuario como propietario a la plantilla
         pagina.setPropietario(actual);
-
-        // 3. Ahora guardamos
+        // guardamos
         return service.save(pagina);
     }
 
     @PostMapping("/{id}/aplicar")
     public ResponseEntity<Void> aplicarPlantilla(@PathVariable Integer id, @RequestBody Map<String, String> payload) {
         String email = payload.get("email");
-        // Obtenemos al usuario logueado (Pedro) para validar propiedad
+        // Obtenemos al usuario logueado para validar propiedad
         Usuario actual = usuarioService.getUsuarioAutenticado();
-
         service.aplicarPlantillaAUsuario(id, email, actual.getId());
         return ResponseEntity.ok().build();
     }
@@ -69,13 +65,11 @@ public class PlantillaMonitoreoController {
         PlantillaMonitoreo existe = service.findById(id);
 
         if (existe != null) {
-            // 1. Mantenemos el propietario que ya tenía la plantilla en la DB
+            // Mantenemos el propietario que  tenía la plantilla en la DB
             detalle.setPropietario(existe.getPropietario());
-
-            // 2. Aseguramos el ID
+            // Aseguramos el ID
             detalle.setId(id);
-
-            // 3. Guardamos
+            // Guardamos
             return ResponseEntity.ok(service.save(detalle));
         }
         return ResponseEntity.notFound().build();

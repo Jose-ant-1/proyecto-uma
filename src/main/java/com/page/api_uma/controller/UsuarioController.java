@@ -21,14 +21,11 @@ public class UsuarioController {
         this.service = service;
     }
 
-    // --- PERFIL DEL USUARIO ---
-
-    // En UsuarioController.java (Sugerencia para que el usuario se edite a sí mismo)
     @PutMapping("/me")
     public ResponseEntity<?> updateMe(@RequestBody Usuario datosRecibidos) {
         Usuario actual = service.getUsuarioAutenticado();
 
-        // 1. Validar nombre y email (ya lo teníamos)
+        // nombre y email
         String nombreLimpio = datosRecibidos.getNombre() != null ? datosRecibidos.getNombre().trim() : "";
         String emailLimpio = datosRecibidos.getEmail() != null ? datosRecibidos.getEmail().trim() : "";
 
@@ -39,16 +36,16 @@ public class UsuarioController {
         actual.setNombre(nombreLimpio);
         actual.setEmail(emailLimpio);
 
-        // 2. NUEVA VALIDACIÓN DE CONTRASEÑA
+        // VALIDACIÓN DE CONTRASEÑA
         if (datosRecibidos.getContrasenia() != null) {
             String passNueva = datosRecibidos.getContrasenia();
 
             // Si el usuario intentó mandar algo que solo son espacios o está vacío
             if (passNueva.isBlank()) {
                 // No hacemos nada o devolvemos error.
-                // En este caso, si el usuario está editando su PERFIL (nombre/email),
-                // simplemente ignoramos el campo de contraseña si viene vacío/blanco.
-                // Pero si es un cambio explícito de password, lanzamos error:
+                // si el usuario está editando su PERFIL (nombre/email),
+                // ignoramos el campo de contraseña si viene vacío/blanco.
+                // si es un cambio explícito de password, lanzamos error:
                 if (!passNueva.isEmpty()) {
                     return ResponseEntity.badRequest().body("La contraseña no puede consistir solo en espacios.");
                 }
@@ -73,8 +70,6 @@ public class UsuarioController {
         return ResponseEntity.ok(convertirADTO(actual));
     }
 
-    // --- ADMINISTRACIÓN ---
-
     @GetMapping
     public ResponseEntity<List<UsuarioDTO>> findAll() {
         List<UsuarioDTO> usuarios = service.findAll().stream()
@@ -95,31 +90,30 @@ public class UsuarioController {
 
     @PostMapping
     public ResponseEntity<UsuarioDTO> create(@RequestBody Usuario usuario) {
-        // Al crear, devolvemos el DTO para no exponer la contraseña recién creada
+        // Al crear, devolvemos el DTO
         Usuario guardado = service.save(usuario);
         return ResponseEntity.status(HttpStatus.CREATED).body(convertirADTO(guardado));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<UsuarioDTO> update(@PathVariable Integer id, @RequestBody Usuario datosRecibidos) {
-        // 1. Buscamos el usuario real que está en la base de datos
+        // Buscamos el usuario real que está en la base de datos
         Usuario usuarioExistente = service.findById(id);
 
         if (usuarioExistente != null) {
-            // 2. Actualizamos solo los campos básicos
+            // Actualizamos solo los campos básicos
             usuarioExistente.setNombre(datosRecibidos.getNombre());
             usuarioExistente.setEmail(datosRecibidos.getEmail());
             usuarioExistente.setPermiso(datosRecibidos.getPermiso());
 
-            // 3. LÓGICA DE CONTRASEÑA:
-            // Solo si recibimos una contraseña que no esté vacía, la actualizamos.
-            // Si viene vacía o nula, mantenemos la que ya tenía el usuarioExistente (su hash).
+            // si recibimos una contraseña que no esté vacía, la actualizamos.
+            // Si viene vacía o nula, mantenemos la que ya tenía el usuarioExistente
             if (datosRecibidos.getContrasenia() != null && !datosRecibidos.getContrasenia().isBlank()) {
                 usuarioExistente.setContrasenia(datosRecibidos.getContrasenia());
             }
 
-            // 4. Guardamos el objeto 'usuarioExistente' (que ya tiene su ID y relaciones intactas)
-            // Tu service.save() ya se encarga de encriptar si no empieza por $2a$
+            // Guardamos el objeto
+            // el service.save() ya se encripta si no empieza por $2a$
             Usuario guardado = service.save(usuarioExistente);
 
             return ResponseEntity.ok(convertirADTO(guardado));
@@ -140,7 +134,7 @@ public class UsuarioController {
     public ResponseEntity<List<UsuarioDTO>> buscar(@RequestParam String q) {
         List<Usuario> usuarios = service.buscarUsuarios(q);
         List<UsuarioDTO> dtos = usuarios.stream()
-                .map(this::convertirADTO) // Usando tu método existente
+                .map(this::convertirADTO)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
     }

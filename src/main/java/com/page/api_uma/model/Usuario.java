@@ -43,7 +43,7 @@ public class Usuario {
     @JsonIgnore
     private Set<PlantillaUsuario> plantillaUsuarios = new HashSet<>();
 
-    @OneToMany(mappedBy = "propietario", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "propietario", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<Monitoreo> monitoreosPropios;
 
@@ -51,5 +51,13 @@ public class Usuario {
     @JsonIgnore
     private Set<Monitoreo> monitoreosInvitado;
 
+
+    @OneToMany(mappedBy = "propietario", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<PlantillaMonitoreo> plantillasMonitoreoPropias;
+
+    @OneToMany(mappedBy = "propietario", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    private List<PlantillaUsuario> plantillasUsuarioPropias;
 
 }

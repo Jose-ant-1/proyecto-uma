@@ -17,7 +17,7 @@ import java.util.List;
 public class PlantillaUsuarioController {
 
     private final PlantillaUsuarioService service;
-    private final UsuarioService usuarioService; // Para obtener el objeto Usuario completo
+    private final UsuarioService usuarioService;
 
     public PlantillaUsuarioController(PlantillaUsuarioService service, UsuarioService usuarioService) {
         this.service = service;
@@ -26,7 +26,7 @@ public class PlantillaUsuarioController {
 
     @GetMapping
     public List<PlantillaUsuario> findAll(Principal principal) {
-        // Solo devolvemos las del usuario logueado
+        // Solo las del usuario logueado
         return service.findByPropietario(principal.getName());
     }
 
@@ -40,7 +40,7 @@ public class PlantillaUsuarioController {
 
     @PostMapping
     public PlantillaUsuario create(@RequestBody PlantillaUsuario plantilla, Principal principal) {
-        // Asignamos el dueño automáticamente según el token/sesión
+        // Asignamos el dueño automáticamente según la sesión
         Usuario owner = usuarioService.findByEmail(principal.getName());
         plantilla.setPropietario(owner);
         return service.save(plantilla);

@@ -7,7 +7,6 @@ import com.page.api_uma.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class PlantillaUsuarioService {
@@ -33,7 +32,6 @@ public class PlantillaUsuarioService {
     }
 
     public List<PlantillaUsuario> findByPropietario(String email) {
-        // Solución para "Cannot resolve method orElseThrow"
         Usuario owner = java.util.Optional.ofNullable(usuarioRepository.findByEmail(email))
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
@@ -43,7 +41,6 @@ public class PlantillaUsuarioService {
 
     // Verificar si soy el dueño antes de editar/borra
     public boolean esPropietario(Integer plantillaId, String email) {
-        // Usamos el nombre correcto de la variable: plantillaUsuarioRepository
         return plantillaUsuarioRepository.findById(plantillaId)
                 .map(p -> p.getPropietario().getEmail().equals(email))
                 .orElse(false);

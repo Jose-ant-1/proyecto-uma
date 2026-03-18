@@ -1,12 +1,9 @@
 package com.page.api_uma.service;
 
 import com.page.api_uma.model.PaginaWeb;
-import com.page.api_uma.model.Usuario;
 import com.page.api_uma.repository.PaginaWebRepository;
 import org.springframework.stereotype.Service;
 
-import java.net.HttpURLConnection;
-import java.net.URL;
 import java.util.Collections;
 import java.util.List;
 
@@ -50,11 +47,9 @@ public class PaginaWebService {
             connection.setReadTimeout(5000);
 
             return connection.getResponseCode();
-        }
-        catch (java.net.UnknownHostException e) {
+        } catch (java.net.UnknownHostException e) {
             return 404;
-        }
-        catch (Exception e) {
+        } catch (Exception e) {
             return 500;
         }
     }
@@ -64,17 +59,6 @@ public class PaginaWebService {
             return Collections.emptyList();
         }
         return paginaWebRepository.buscarPorTermino(termino);
-    }
-
-    public PaginaWeb obtenerOCrearPagina(String url, String nombre) {
-        return paginaWebRepository.findByUrl(url)
-                .orElseGet(() -> {
-                    // Si no existe, creamos el objeto nuevo
-                    PaginaWeb nueva = new PaginaWeb();
-                    nueva.setUrl(url);
-                    nueva.setNombre(nombre); // El dominio o nombre descriptivo
-                    return paginaWebRepository.save(nueva);
-                });
     }
 
 }

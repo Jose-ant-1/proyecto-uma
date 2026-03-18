@@ -1,7 +1,6 @@
 package com.page.api_uma.DTOs;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.page.api_uma.model.Usuario;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;

@@ -1,6 +1,7 @@
 package com.page.api_uma.service;
 
 import com.page.api_uma.model.Monitoreo;
+import com.page.api_uma.model.Usuario;
 import com.page.api_uma.repository.MonitoreoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -10,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 @Service
@@ -19,20 +21,23 @@ public class MonitoreoTaskService {
     private MonitoreoRepository repository;
 
     @Autowired
-    private RestTemplate restTemplate; // Para hacer la petición HTTP
+    private RestTemplate restTemplate;
+
+    @Autowired
+    private EmailService emailService;
 
     @Scheduled(fixedRate = 30000)
-    @Transactional // <--- MUY IMPORTANTE: Mantiene la sesión abierta para las relaciones
+    @Transactional
     public void ejecutarRevisionesProgramadas() {
-        // Usamos el nuevo método que trae la relación cargada
-        List<Monitoreo> monitoreos = repository.findAllWithPagina();
+        // Importante: usa el método que carga las páginas y los invitados
+        List<Monitoreo> monitoreos = repository.findAll();
         LocalDateTime ahora = LocalDateTime.now();
 
         for (Monitoreo m : monitoreos) {
-            // Verificamos si toca o si nunca se ha revisado (null)
+            if (!m.isActivo()) continue;
+
             if (m.getFechaUltimaRevision() == null ||
                     ahora.isAfter(m.getFechaUltimaRevision().plusMinutes(m.getMinutos()))) {
-
                 realizarCheck(m);
             }
         }
@@ -40,35 +45,58 @@ public class MonitoreoTaskService {
 
     private void realizarCheck(Monitoreo m) {
         String urlOriginal = m.getPaginaWeb().getUrl();
-
         try {
-            // 1. Validación de URL vacía
-            if (urlOriginal == null || urlOriginal.isBlank()) {
-                throw new IllegalArgumentException("La URL está vacía");
-            }
-
-            // 2. "Arreglar" la URL si no tiene protocolo (URI is not absolute fix)
-            String urlFinal = urlOriginal;
-            if (!urlFinal.startsWith("http://") && !urlFinal.startsWith("https://")) {
-                urlFinal = "https://" + urlFinal; // Forzamos HTTPS por defecto
-            }
-
-            System.out.println("Intentando conectar a: " + urlFinal);
+            String urlFinal = urlOriginal.startsWith("http") ? urlOriginal : "https://" + urlOriginal;
 
             ResponseEntity<String> response = restTemplate.getForEntity(urlFinal, String.class);
-            m.setEstado(response.getStatusCode().value());
+            int status = response.getStatusCode().value();
+            m.setEstado(status);
+
+            // SI FUNCIONA (200-299)
+            if (status >= 200 && status < 300) {
+                m.setFallosConsecutivos(0);
+                m.setAlertaEnviada(false); // Reset para la próxima caída
+            } else {
+                gestionarFallo(m, status);
+            }
 
         } catch (org.springframework.web.client.HttpStatusCodeException e) {
-            System.out.println("Error HTTP (" + e.getStatusCode() + ") en: " + urlOriginal);
             m.setEstado(e.getStatusCode().value());
+            gestionarFallo(m, e.getStatusCode().value());
         } catch (Exception e) {
-            // Aquí es donde caía el "URI is not absolute"
-            System.err.println("FALLO CRÍTICO en " + urlOriginal + " -> " + e.getMessage());
-            m.setEstado(0); // Usamos 0 para errores de formación de URL o Red
+            m.setEstado(0); // Error de red/DNS
+            gestionarFallo(m, 0);
         } finally {
-            // SIEMPRE guardamos para que el Scheduler sepa que ya lo procesó
             m.setFechaUltimaRevision(LocalDateTime.now());
             repository.save(m);
         }
+    }
+
+    private void gestionarFallo(Monitoreo m, int status) {
+        m.setFallosConsecutivos(m.getFallosConsecutivos() + 1);
+
+        // Si llegamos al límite y NO hemos enviado alerta todavía
+        if (m.getFallosConsecutivos() >= m.getRepeticiones() && !m.isAlertaEnviada()) {
+            enviarNotificaciones(m, status);
+            m.setAlertaEnviada(true); // Marcamos como enviado para evitar SPAM
+        }
+    }
+
+    private void enviarNotificaciones(Monitoreo m, int status) {
+        List<String> destinatarios = new ArrayList<>();
+
+        // Dueño
+        destinatarios.add(m.getPropietario().getEmail());
+
+        // Invitados (Gracias al @Transactional la lista está disponible)
+        m.getInvitados().forEach(inv -> destinatarios.add(inv.getEmail()));
+
+        // Llamada al servicio de Gmail
+        emailService.enviarNotificacionFallo(
+                destinatarios,
+                m.getNombre(),
+                m.getPaginaWeb().getUrl(),
+                status
+        );
     }
 }

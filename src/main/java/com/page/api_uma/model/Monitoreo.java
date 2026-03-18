@@ -29,8 +29,10 @@ public class Monitoreo {
     private int repeticiones;
     private int minutos;
 
-    // --- NUEVOS CAMPOS DE ESTADO ---
-    private Integer estado; // Almacenará el código HTTP (200, 404, 500...)
+    private int fallosConsecutivos = 0;
+    private boolean alertaEnviada = false; // Para no saturar el correo si sigue caída
+
+    private Integer estado; // Almacena el código HTTP (200, 404, 500...)
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime fechaUltimaRevision;

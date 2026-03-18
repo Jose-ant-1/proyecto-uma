@@ -5,7 +5,6 @@ import com.page.api_uma.DTOs.MonitoreoListadoDTO;
 import com.page.api_uma.DTOs.UsuarioDTO;
 import com.page.api_uma.model.Monitoreo;
 import com.page.api_uma.model.PaginaWeb;
-import com.page.api_uma.model.PlantillaMonitoreo;
 import com.page.api_uma.model.Usuario;
 import com.page.api_uma.repository.MonitoreoRepository;
 import com.page.api_uma.repository.PaginaWebRepository;
@@ -32,10 +31,6 @@ public class MonitoreoService {
         this.paginaWebService = paginaWebService;
         this.usuarioService = usuarioService;
     }
-
-    // ==========================================
-    // 1. MÉTODOS DE CREACIÓN Y ESCRITURA
-    // ==========================================
 
     @Transactional
     public MonitoreoDTODetalle crearMonitoreo(Usuario propietario, String url, String nombreMonitoreo, int minutos, int repeticiones) {
@@ -82,7 +77,7 @@ public class MonitoreoService {
         Monitoreo m = monitoreoRepository.findById(monitoreoId).orElse(null);
         Usuario invitado = usuarioService.buscarPorEmail(emailInvitado);
 
-        // REGLA DE ORO: Si el invitado es el mismo que el dueño, no hacemos nada
+        // Si el invitado es el mismo que el dueño, no hacemos nada
         if (invitado != null && invitado.getId() == propietarioId) {
             return convertirADetalleDTO(m); // Salimos sin añadir
         }
@@ -103,12 +98,12 @@ public class MonitoreoService {
         boolean esAutorizado = m.getPropietario().getId() == usuarioId || "ADMIN".equals(permiso);
 
         if (esAutorizado) {
-            // PASO 1: Limpiar invitados (Como Monitoreo es dueño aquí, clear() suele bastar,
+            // Limpiar invitados (Como Monitoreo es dueño aquí, clear() suele bastar,
             // pero para asegurar borramos la colección)
             m.getInvitados().clear();
             monitoreoRepository.saveAndFlush(m);
 
-            // PASO 2: Limpiar la tabla de plantillas mediante SQL directo
+            // Limpiar la tabla de plantillas mediante SQL directo
             // Esto elimina las filas en 'monitoreo_plantilla_mon' donde esté este monitoreo
             monitoreoRepository.eliminarRelacionesConPlantillas(id);
 
@@ -119,7 +114,7 @@ public class MonitoreoService {
         return false;
     }
 
-    public MonitoreoDTODetalle obtenerDetalleSeguro(int id, int usuarioId) {
+    public MonitoreoDTODetalle obtenerDetalle(int id, int usuarioId) {
         Monitoreo m = monitoreoRepository.findById(id).orElse(null);
         Usuario u = usuarioService.findById(usuarioId); // Buscamos al usuario que hace la petición
 
@@ -134,7 +129,7 @@ public class MonitoreoService {
                 return convertirADetalleDTO(m);
             }
         }
-        return null; // Si llega aquí, el controlador devolverá 403 (Prohibido)
+        return null; // Si llega aquí, el controlador devolverá 403
     }
 
     public List<MonitoreoListadoDTO> findAll() {
@@ -192,18 +187,18 @@ public class MonitoreoService {
     }
 
     public List<MonitoreoListadoDTO> buscarAccesibles(int usuarioId, String termino) {
-        // 1. Buscamos al usuario (usando el método que ya tienes en el service)
+        // Buscamos al usuario
         Usuario usuario = usuarioService.findById(usuarioId);
 
         if (usuario == null) return List.of();
 
-        // 2. Unimos sus monitoreos propios y los que es invitado
+        // Unimos sus monitoreos propios y los que es invitado
         Stream<Monitoreo> streamUnificado = Stream.concat(
                 usuario.getMonitoreosPropios().stream(),
                 usuario.getMonitoreosInvitado().stream()
         );
 
-        // 3. Filtramos por el término y convertimos a DTO
+        // Filtramos por el término y convertimos a DTO
         return streamUnificado
                 .filter(m -> {
                     if (termino == null || termino.isBlank()) return true;
