@@ -1,9 +1,9 @@
 package com.page.api_uma.service;
 
 import com.page.api_uma.model.Monitoreo;
-import com.page.api_uma.model.PlantillaUsuario;
 import com.page.api_uma.model.Usuario;
 import com.page.api_uma.repository.UsuarioRepository;
+import jakarta.persistence.EntityManager;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -24,10 +24,12 @@ public class UsuarioService implements UserDetailsService {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EntityManager entityManager;
 
-    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
+    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, EntityManager entityManager) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
+        this.entityManager = entityManager;
     }
 
     public List<Usuario> findAll() {
@@ -49,37 +51,33 @@ public class UsuarioService implements UserDetailsService {
     }
 
     @Transactional
-    public void deleteById(Integer usuarioId) {
-        Usuario usuario = usuarioRepository.findById(usuarioId)
-                .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
+    public void deleteById(Integer id) {
+        Usuario usuario = usuarioRepository.findById(id).orElse(null);
 
-        // Limpiar donde es INVITADO en monitoreos ajenos
-        // Esto elimina la entrada en la tabla intermedia 'monitoreo_invitados'
-        for (Monitoreo m : usuario.getMonitoreosInvitado()) {
-            m.getInvitados().remove(usuario);
+        if (usuario != null) {
+            // Limpiar relaciones donde el usuario es "invitado"
+
+            usuario.getMonitoreosInvitado().forEach(monitoreo -> {
+                monitoreo.getInvitados().remove(usuario);
+            });
+            usuario.getMonitoreosInvitado().clear();
+
+            // Limpiar tablas intermedias conflictivas vía Repositorio
+
+            usuarioRepository.eliminarRelacionesDePlantillasDeSusMonitoreos(id);
+            usuarioRepository.eliminarRelacionesEnPlantillasUsuario(id);
+
+            // Asegurar que los cambios se manden a la DB antes del delete final
+            usuarioRepository.saveAndFlush(usuario);
+
+            usuarioRepository.delete(usuario);
         }
-        usuario.getMonitoreosInvitado().clear();
-
-        // Limpiar donde pertenece a PLANTILLAS de otros
-        // Esto elimina la entrada en 'usuario_plantillaUsuar'
-        for (PlantillaUsuario pu : usuario.getPlantillaUsuarios()) {
-            pu.getUsuarios().remove(usuario);
-        }
-        usuario.getPlantillaUsuarios().clear();
-
-        // El borrado final
-        // Al tener CascadeType.ALL y orphanRemoval=true en sus listas "Propias",
-        // Spring borrará automáticamente sus Monitoreos y Plantillas.
-        usuarioRepository.delete(usuario);
     }
 
     @Transactional(readOnly = true)
     public Usuario findByEmail(String email) {
         return usuarioRepository.findByEmail(email);
     }
-
-
-    // Un usuario "tiene" páginas si es dueño de un monitoreo o invitado a uno.
 
     public Set<Monitoreo> findMonitoreosAccessibles(Integer usuarioId) {
         Usuario usuario = usuarioRepository.findById(usuarioId).orElse(null);
@@ -107,9 +105,6 @@ public class UsuarioService implements UserDetailsService {
         return usuarioRepository.buscarPorTermino(termino);
     }
 
-
-     // Requerido por Spring Security para la autenticación.
-
     @Override
     public UserDetails loadUserByUsername(String email) throws UsernameNotFoundException {
         Usuario usuario = usuarioRepository.findByEmail(email);
@@ -122,7 +117,7 @@ public class UsuarioService implements UserDetailsService {
     }
 
 
-     // Método central de seguridad: identifica al usuario logueado en la sesión actual.
+     // metodo central de seguridad: identifica al usuario logueado en la sesión actual.
 
     public Usuario getUsuarioAutenticado() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();

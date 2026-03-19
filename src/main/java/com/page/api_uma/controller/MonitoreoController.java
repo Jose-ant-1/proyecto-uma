@@ -1,7 +1,7 @@
 package com.page.api_uma.controller;
 
 import com.page.api_uma.DTOs.MonitoreoDTODetalle;
-import com.page.api_uma.DTOs.MonitoreoListadoDTO; // Importante añadirlo
+import com.page.api_uma.DTOs.MonitoreoListadoDTO;
 import com.page.api_uma.model.PaginaWeb;
 import com.page.api_uma.model.Usuario;
 import com.page.api_uma.service.MonitoreoService;
@@ -33,7 +33,7 @@ public class MonitoreoController {
     @PostMapping
     public ResponseEntity<MonitoreoDTODetalle> create(@RequestBody Map<String, Object> payload) {
         Usuario actual = getActual();
-        String url = (String) payload.get("url");
+        String paginaUrl = (String) payload.get("paginaUrl");
         String nombreMonitoreo = (String) payload.get("nombre");
         int minutos = ((Number) payload.get("minutos")).intValue();
         int repeticiones = ((Number) payload.get("repeticiones")).intValue();
@@ -42,9 +42,10 @@ public class MonitoreoController {
         if (minutos < 1 || repeticiones < 0) {
             return ResponseEntity.badRequest().build();
         }
-        MonitoreoDTODetalle nuevo = monitoreoService.crearMonitoreo(actual, url, nombreMonitoreo, minutos, repeticiones);
+        MonitoreoDTODetalle nuevo = monitoreoService.crearMonitoreo(actual, paginaUrl, nombreMonitoreo, minutos, repeticiones);
         return ResponseEntity.status(HttpStatus.CREATED).body(nuevo);
     }
+
 
     @GetMapping
     public ResponseEntity<List<MonitoreoListadoDTO>> getAllMyMonitoreos() {
@@ -117,30 +118,24 @@ public class MonitoreoController {
     }
 
 
-    @PutMapping("/{id}/invitar")
-    public ResponseEntity<MonitoreoDTODetalle> invitar(@PathVariable int id, @RequestBody Map<String, String> payload) {
-        String emailInvitado = payload.get("email");
-        if (emailInvitado == null || emailInvitado.isEmpty()) {
+    @PutMapping("/invitar")
+    public ResponseEntity<?> invitar(@RequestBody List<Integer> ids, @RequestParam List<String> emails) {
+        if (ids == null || emails == null || ids.isEmpty() || emails.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
 
-        MonitoreoDTODetalle actualizado = monitoreoService.toggleInvitado(id, getActual().getId(), emailInvitado);
-
-        if (actualizado == null) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-
-        return ResponseEntity.ok(actualizado);
+        monitoreoService.invitacionEnMasa(getActual().getId(), ids, emails);
+        return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping("/{id}/invitar")
-    public ResponseEntity<MonitoreoDTODetalle> quitarInvitado(@PathVariable int id, @RequestParam String email) {
-        MonitoreoDTODetalle actualizado = monitoreoService.eliminarInvitado(id, getActual().getId(), email);
-
-        if (actualizado == null) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+    @DeleteMapping("/invitar")
+    public ResponseEntity<?> quitarInvitados(@RequestBody List<Integer> ids, @RequestParam List<String> emails) {
+        if (ids == null || emails == null || ids.isEmpty() || emails.isEmpty()) {
+            return ResponseEntity.badRequest().build();
         }
-        return ResponseEntity.ok(actualizado);
+
+        monitoreoService.quitarEnMasa(getActual().getId(), ids, emails);
+        return ResponseEntity.ok().build();
     }
 
 }

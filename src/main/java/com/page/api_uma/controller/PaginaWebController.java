@@ -69,8 +69,4 @@ public class PaginaWebController {
         return ResponseEntity.ok(paginaService.buscarPaginas(q));
     }
 
-    private Usuario getUsuarioAutenticado() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return usuarioService.findByEmail(email);
-    }
 }

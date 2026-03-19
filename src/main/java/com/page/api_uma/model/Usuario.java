@@ -51,7 +51,6 @@ public class Usuario {
     @JsonIgnore
     private Set<Monitoreo> monitoreosInvitado;
 
-
     @OneToMany(mappedBy = "propietario", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<PlantillaMonitoreo> plantillasMonitoreoPropias;

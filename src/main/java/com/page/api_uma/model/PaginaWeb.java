@@ -30,7 +30,7 @@ public class PaginaWeb {
 
     private String notaInfo;
 
-    @OneToMany(mappedBy = "paginaWeb")
+    @OneToMany(mappedBy = "paginaWeb", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<Monitoreo> monitoreos;
 

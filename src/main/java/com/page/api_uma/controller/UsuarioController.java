@@ -125,7 +125,6 @@ public class UsuarioController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable Integer id) {
         if (!tienePermiso(id)) return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-
         service.deleteById(id);
         return ResponseEntity.noContent().build();
     }

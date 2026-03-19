@@ -73,23 +73,6 @@ public class MonitoreoService {
     }
 
     @Transactional
-    public MonitoreoDTODetalle toggleInvitado(int monitoreoId, int propietarioId, String emailInvitado) {
-        Monitoreo m = monitoreoRepository.findById(monitoreoId).orElse(null);
-        Usuario invitado = usuarioService.buscarPorEmail(emailInvitado);
-
-        // Si el invitado es el mismo que el dueño, no hacemos nada
-        if (invitado != null && invitado.getId() == propietarioId) {
-            return convertirADetalleDTO(m); // Salimos sin añadir
-        }
-
-        if (m != null && m.getPropietario().getId() == propietarioId && invitado != null) {
-            if (m.getInvitados().contains(invitado)) return convertirADetalleDTO(m);
-            m.getInvitados().add(invitado);
-            return convertirADetalleDTO(monitoreoRepository.save(m));
-        }
-        return null;
-    }
-    @Transactional
     public boolean eliminar(int id, int usuarioId, String permiso) {
         Monitoreo m = monitoreoRepository.findById(id).orElse(null);
         if (m == null) return false;
@@ -213,7 +196,7 @@ public class MonitoreoService {
     }
 
     @Transactional
-    public MonitoreoDTODetalle eliminarInvitado(int monitoreoId, int propietarioId, String emailInvitado) {
+    protected MonitoreoDTODetalle eliminarInvitado(int monitoreoId, int propietarioId, String emailInvitado) {
         Monitoreo m = monitoreoRepository.findById(monitoreoId).orElse(null);
         Usuario invitado = usuarioService.buscarPorEmail(emailInvitado);
 
@@ -229,6 +212,45 @@ public class MonitoreoService {
         }
         return null;
     }
+
+    @Transactional
+    protected MonitoreoDTODetalle toggleInvitado(int monitoreoId, int propietarioId, String emailInvitado) {
+        Monitoreo m = monitoreoRepository.findById(monitoreoId).orElse(null);
+        Usuario invitado = usuarioService.buscarPorEmail(emailInvitado);
+
+        // Si el invitado es el mismo que el dueño, no hacemos nada
+        if (invitado != null && invitado.getId() == propietarioId) {
+            return convertirADetalleDTO(m); // Salimos sin añadir
+        }
+
+        if (m != null && m.getPropietario().getId() == propietarioId && invitado != null) {
+            if (m.getInvitados().contains(invitado)) return convertirADetalleDTO(m);
+            m.getInvitados().add(invitado);
+            return convertirADetalleDTO(monitoreoRepository.save(m));
+        }
+        return null;
+    }
+
+    @Transactional
+    public void invitacionEnMasa(int propietarioId, List<Integer> monitoreosIds, List<String> emails) {
+        for (Integer monitoreoId : monitoreosIds) {
+            for (String email : emails) {
+                // Llamamos a tu lógica individual existente
+                this.toggleInvitado(monitoreoId, propietarioId, email);
+            }
+        }
+    }
+
+    @Transactional
+    public void quitarEnMasa(int propietarioId, List<Integer> monitoreosIds, List<String> emails) {
+        for (Integer monitoreoId : monitoreosIds) {
+            for (String email : emails) {
+                // Llamamos a tu lógica de borrado existente
+                this.eliminarInvitado(monitoreoId, propietarioId, email);
+            }
+        }
+    }
+
 
     private UsuarioDTO mapearUsuarioADTO(Usuario u) {
         return UsuarioDTO.builder()
@@ -248,5 +270,7 @@ public class MonitoreoService {
             return "Nueva Página";
         }
     }
+
+
 
 }

@@ -7,12 +7,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.util.List;
-
 @Repository
 public interface MonitoreoRepository extends JpaRepository<Monitoreo, Integer> {
-    @Query("SELECT m FROM Monitoreo m JOIN FETCH m.paginaWeb")
-    List<Monitoreo> findAllWithPagina();
 
     @Modifying
     @Query(value = "DELETE FROM monitoreo_plantilla_mon WHERE id_monitoreo = :id", nativeQuery = true)
