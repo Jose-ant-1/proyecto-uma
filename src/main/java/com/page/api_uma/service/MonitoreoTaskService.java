@@ -29,7 +29,7 @@ public class MonitoreoTaskService {
     @Scheduled(fixedRate = 30000)
     @Transactional
     public void ejecutarRevisionesProgramadas() {
-        // Importante: usa el método que carga las páginas y los invitados
+        // usa el metodo que carga las páginas y los invitados
         List<Monitoreo> monitoreos = repository.findAll();
         LocalDateTime ahora = LocalDateTime.now();
 

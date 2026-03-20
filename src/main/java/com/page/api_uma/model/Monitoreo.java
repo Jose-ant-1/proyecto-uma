@@ -16,7 +16,7 @@ import java.util.Set;
 @NoArgsConstructor
 @AllArgsConstructor
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"}) // Limpia el JSON de basura técnica
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @Table(name = "monitoreos")
 public class Monitoreo {
 

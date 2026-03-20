@@ -77,20 +77,17 @@ public class MonitoreoService {
         Monitoreo m = monitoreoRepository.findById(id).orElse(null);
         if (m == null) return false;
 
-        // Validación de seguridad (Dueño o ADMIN)
         boolean esAutorizado = m.getPropietario().getId() == usuarioId || "ADMIN".equals(permiso);
 
         if (esAutorizado) {
-            // Limpiar invitados (Como Monitoreo es dueño aquí, clear() suele bastar,
-            // pero para asegurar borramos la colección)
+            // Limpiar invitados
             m.getInvitados().clear();
             monitoreoRepository.saveAndFlush(m);
 
-            // Limpiar la tabla de plantillas mediante SQL directo
-            // Esto elimina las filas en 'monitoreo_plantilla_mon' donde esté este monitoreo
+            // Limpiar la tabla de plantillas
             monitoreoRepository.eliminarRelacionesConPlantillas(id);
 
-            // PASO 3: Ahora el monitoreo está "suelto" y se puede borrar sin errores de FK
+            // borrar sin errores de FK
             monitoreoRepository.delete(m);
             return true;
         }

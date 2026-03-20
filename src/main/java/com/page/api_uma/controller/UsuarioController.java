@@ -60,7 +60,6 @@ public class UsuarioController {
         return ResponseEntity.ok(convertirADTO(guardado));
     }
 
-    // UsuarioController.java
     @GetMapping("/me")
     public ResponseEntity<UsuarioDTO> getMe() {
         Usuario actual = service.getUsuarioAutenticado();
@@ -90,14 +89,13 @@ public class UsuarioController {
 
     @PostMapping
     public ResponseEntity<UsuarioDTO> create(@RequestBody Usuario usuario) {
-        // Al crear, devolvemos el DTO
         Usuario guardado = service.save(usuario);
         return ResponseEntity.status(HttpStatus.CREATED).body(convertirADTO(guardado));
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<UsuarioDTO> update(@PathVariable Integer id, @RequestBody Usuario datosRecibidos) {
-        // Buscamos el usuario real que está en la base de datos
+        // Buscamos el usuario que está en la base de datos
         Usuario usuarioExistente = service.findById(id);
 
         if (usuarioExistente != null) {

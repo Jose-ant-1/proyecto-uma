@@ -42,7 +42,7 @@ public class UsuarioService implements UserDetailsService {
 
     public Usuario save(Usuario usuario) {
         if (usuario.getContrasenia() != null && !usuario.getContrasenia().isBlank()) {
-            // IMPORTANTE: Solo encriptar si NO es ya un hash de BCrypt
+            // Solo encriptar si NO es ya un hash de BCrypt
             if (!usuario.getContrasenia().startsWith("$2a$")) {
                 usuario.setContrasenia(passwordEncoder.encode(usuario.getContrasenia()));
             }
@@ -112,12 +112,12 @@ public class UsuarioService implements UserDetailsService {
 
         return User.withUsername(usuario.getEmail())
                 .password(usuario.getContrasenia())
-                .authorities(usuario.getPermiso()) // Rol: ADMIN, USER, etc.
+                .authorities(usuario.getPermiso())
                 .build();
     }
 
 
-     // metodo central de seguridad: identifica al usuario logueado en la sesión actual.
+     // identifica al usuario logueado en la sesión actual.
 
     public Usuario getUsuarioAutenticado() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
