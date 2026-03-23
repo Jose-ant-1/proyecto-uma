@@ -1,7 +1,6 @@
 package com.page.api_uma.service;
 
 import com.page.api_uma.model.Monitoreo;
-import com.page.api_uma.model.Usuario;
 import com.page.api_uma.repository.MonitoreoRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -9,6 +8,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -16,6 +17,8 @@ import java.util.List;
 
 @Service
 public class MonitoreoTaskService {
+
+    private static final Logger logger = LoggerFactory.getLogger(MonitoreoTaskService.class);
 
     @Autowired
     private MonitoreoRepository repository;
@@ -45,6 +48,8 @@ public class MonitoreoTaskService {
 
     private void realizarCheck(Monitoreo m) {
         String urlOriginal = m.getPaginaWeb().getUrl();
+
+        System.out.println("Iniciando revisión para: " + m.getNombre() + " (" + urlOriginal + ")");
         try {
             String urlFinal = urlOriginal.startsWith("http") ? urlOriginal : "https://" + urlOriginal;
 
