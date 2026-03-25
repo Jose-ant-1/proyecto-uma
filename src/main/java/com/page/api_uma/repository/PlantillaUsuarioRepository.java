@@ -9,5 +9,5 @@ import java.util.List;
 
 @Repository
 public interface PlantillaUsuarioRepository extends JpaRepository<PlantillaUsuario, Integer> {
-    List<PlantillaUsuario> findByPropietario(Usuario propietario);
+    List<PlantillaUsuario> findByPropietarioOrderByNombreAsc(Usuario propietario);
 }

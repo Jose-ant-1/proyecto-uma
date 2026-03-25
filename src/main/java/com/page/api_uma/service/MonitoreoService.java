@@ -8,6 +8,7 @@ import com.page.api_uma.model.PaginaWeb;
 import com.page.api_uma.model.Usuario;
 import com.page.api_uma.repository.MonitoreoRepository;
 import com.page.api_uma.repository.PaginaWebRepository;
+import lombok.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -239,7 +240,7 @@ public class MonitoreoService {
     }
 
     @Transactional
-    public void quitarEnMasa(int propietarioId, List<Integer> monitoreosIds, List<String> emails) {
+    public void quitarEnMasa(int propietarioId, @NonNull List<Integer> monitoreosIds, List<String> emails) {
         for (Integer monitoreoId : monitoreosIds) {
             for (String email : emails) {
                 // Llamamos a tu lógica de borrado existente
@@ -248,6 +249,12 @@ public class MonitoreoService {
         }
     }
 
+    public List<MonitoreoListadoDTO> getMisMonitoreosOrdenados(Usuario propietario) {
+        return monitoreoRepository.findAllByPropietarioOrderByNombreAsc(propietario)
+                .stream()
+                .map(this::convertirAListadoDTO) // Usa tu método de conversión existente
+                .collect(Collectors.toList());
+    }
 
     private UsuarioDTO mapearUsuarioADTO(Usuario u) {
         return UsuarioDTO.builder()

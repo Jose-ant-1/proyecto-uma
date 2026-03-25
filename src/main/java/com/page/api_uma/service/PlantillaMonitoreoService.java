@@ -63,7 +63,7 @@ public class PlantillaMonitoreoService {
         Usuario owner = java.util.Optional.ofNullable(usuarioRepository.findByEmail(email))
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
 
-        return plantillaMonitoreoRepository.findByPropietario(owner);
+        return plantillaMonitoreoRepository.findByPropietarioOrderByNombreAsc(owner);
     }
 
     @Transactional

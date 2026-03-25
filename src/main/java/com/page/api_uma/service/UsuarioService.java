@@ -1,9 +1,7 @@
 package com.page.api_uma.service;
 
-import com.page.api_uma.model.Monitoreo;
 import com.page.api_uma.model.Usuario;
 import com.page.api_uma.repository.UsuarioRepository;
-import jakarta.persistence.EntityManager;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -13,23 +11,17 @@ import org.springframework.security.core.userdetails.User;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.util.Collections;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
-import java.util.stream.Stream;
 
 @Service
 public class UsuarioService implements UserDetailsService {
 
     private final UsuarioRepository usuarioRepository;
     private final PasswordEncoder passwordEncoder;
-    private final EntityManager entityManager;
 
-    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder, EntityManager entityManager) {
+    public UsuarioService(UsuarioRepository usuarioRepository, PasswordEncoder passwordEncoder) {
         this.usuarioRepository = usuarioRepository;
         this.passwordEncoder = passwordEncoder;
-        this.entityManager = entityManager;
     }
 
     public List<Usuario> findAll() {
@@ -79,19 +71,6 @@ public class UsuarioService implements UserDetailsService {
         return usuarioRepository.findByEmail(email);
     }
 
-    public Set<Monitoreo> findMonitoreosAccessibles(Integer usuarioId) {
-        Usuario usuario = usuarioRepository.findById(usuarioId).orElse(null);
-        if (usuario == null) {
-            return Collections.emptySet();
-        }
-
-        return Stream.concat(
-                        usuario.getMonitoreosPropios().stream(),
-                        usuario.getMonitoreosInvitado().stream()
-                )
-                .collect(Collectors.toSet());
-    }
-
     public Usuario buscarPorEmail(String email) {
         Usuario usuario = usuarioRepository.findByEmail(email);
         if (usuario == null) throw new UsernameNotFoundException("Usuario no encontrado con email: " + email);
@@ -116,6 +95,9 @@ public class UsuarioService implements UserDetailsService {
                 .build();
     }
 
+    public List<Usuario> getUsuarios() {
+        return usuarioRepository.findAllByOrderByNombreAsc();
+    }
 
      // identifica al usuario logueado en la sesión actual.
 

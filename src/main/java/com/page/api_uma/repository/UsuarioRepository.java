@@ -24,4 +24,6 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     @Query(value = "DELETE FROM usuario_plantilla_usuar WHERE id_usuario = :userId", nativeQuery = true)
     void eliminarRelacionesEnPlantillasUsuario(@Param("userId") Integer userId);
 
+    List<Usuario> findAllByOrderByNombreAsc();
+
 }

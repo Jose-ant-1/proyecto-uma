@@ -1,13 +1,19 @@
 package com.page.api_uma.controller;
 
+import com.page.api_uma.DTOs.AuthResponse;
 import com.page.api_uma.DTOs.UsuarioDTO;
+import com.page.api_uma.config.JwtService;
 import com.page.api_uma.model.Usuario;
+import com.page.api_uma.repository.UsuarioRepository;
 import com.page.api_uma.service.UsuarioService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
@@ -16,9 +22,14 @@ import java.util.stream.Collectors;
 public class UsuarioController {
 
     private final UsuarioService service;
+    private final AuthenticationManager authenticationManager;
+    private final JwtService jwtService;
 
-    public UsuarioController(UsuarioService service) {
+
+    public UsuarioController(UsuarioService service, AuthenticationManager authenticationManager, JwtService jwtService, UsuarioRepository usuarioRepository) {
         this.service = service;
+        this.authenticationManager = authenticationManager;
+        this.jwtService = jwtService;
     }
 
     @PutMapping("/me")
@@ -43,8 +54,7 @@ public class UsuarioController {
             // Si el usuario intentó mandar algo que solo son espacios o está vacío
             if (passNueva.isBlank()) {
                 // No hacemos nada o devolvemos error.
-                // si el usuario está editando su PERFIL (nombre/email),
-                // ignoramos el campo de contraseña si viene vacío/blanco.
+                // si el usuario está editando su PERFIL (nombre/email), ignoramos el campo de contraseña si viene vacío/blanco.
                 // si es un cambio explícito de password, lanzamos error:
                 if (!passNueva.isEmpty()) {
                     return ResponseEntity.badRequest().body("La contraseña no puede consistir solo en espacios.");
@@ -71,7 +81,8 @@ public class UsuarioController {
 
     @GetMapping
     public ResponseEntity<List<UsuarioDTO>> findAll() {
-        List<UsuarioDTO> usuarios = service.findAll().stream()
+        // Usar getUsuarios() para que vengan ordenados A-Z desde la DB
+        List<UsuarioDTO> usuarios = service.getUsuarios().stream()
                 .map(this::convertirADTO)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(usuarios);
@@ -134,6 +145,26 @@ public class UsuarioController {
                 .map(this::convertirADTO)
                 .collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
+    }
+
+    @PostMapping("/login")
+    public ResponseEntity<AuthResponse> login(@RequestBody Map<String, String> request) {
+        // Autenticar con Spring Security, esto comparará la contraseña enviada con el hash BCrypt de la DB
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(
+                        request.get("email"),
+                        request.get("password")
+                )
+        );
+
+        // Si la autenticación no lanzó error, buscamos al usuario
+        var user = service.buscarPorEmail(request.get("email"));
+
+        // Generamos el token JWT
+        String token = jwtService.generateToken(user);
+
+        // Devolvemos el token envuelto en nuestro DTO
+        return ResponseEntity.ok(new AuthResponse(token));
     }
 
     private UsuarioDTO convertirADTO(Usuario u) {

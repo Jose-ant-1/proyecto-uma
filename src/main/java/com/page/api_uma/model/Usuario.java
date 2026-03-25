@@ -5,7 +5,11 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -20,14 +24,14 @@ import java.util.Set;
 @JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Table(name = "usuario")
-public class Usuario {
+public class Usuario  implements UserDetails {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @EqualsAndHashCode.Include
     private int id;
 
-    @Column(unique = true, nullable = false)
+    @Column(nullable = false)
     private String nombre;
 
     @Column(nullable = false)
@@ -58,5 +62,43 @@ public class Usuario {
     @OneToMany(mappedBy = "propietario", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
     private List<PlantillaUsuario> plantillasUsuarioPropias;
+
+
+    @Override
+    public Collection<? extends GrantedAuthority> getAuthorities() {
+        // Esto le dice a Spring qué permisos tiene el usuario.
+        // Usamos tu campo 'permiso' (que suele ser ADMIN o USER)
+        return List.of(new SimpleGrantedAuthority(this.permiso));
+    }
+
+    @Override
+    public String getPassword() {
+        return this.contrasenia; // El campo donde guardas la clave BCrypt
+    }
+
+    @Override
+    public String getUsername() {
+        return this.email; // Tu "username" es el email para el login
+    }
+
+    @Override
+    public boolean isAccountNonExpired() {
+        return true; // La cuenta no expira
+    }
+
+    @Override
+    public boolean isAccountNonLocked() {
+        return true; // La cuenta no está bloqueada
+    }
+
+    @Override
+    public boolean isCredentialsNonExpired() {
+        return true; // Las credenciales no expiran
+    }
+
+    @Override
+    public boolean isEnabled() {
+        return true; // El usuario está habilitado
+    }
 
 }

@@ -15,5 +15,9 @@ public interface PlantillaMonitoreoRepository extends JpaRepository<PlantillaMon
     @Query("SELECT DISTINCT p FROM PlantillaMonitoreo p JOIN p.monitoreos m WHERE m.propietario.id = :usuarioId")
     List<PlantillaMonitoreo> findAllRelatedToUsuario(@Param("usuarioId") int usuarioId);
 
+    List<PlantillaMonitoreo> findByPropietarioOrderByNombreAsc(Usuario propietario);
+
     List<PlantillaMonitoreo> findByPropietario(Usuario propietario);
+
+
 }

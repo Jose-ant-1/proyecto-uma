@@ -50,9 +50,7 @@ public class MonitoreoController {
     @GetMapping
     public ResponseEntity<List<MonitoreoListadoDTO>> getAllMyMonitoreos() {
         Usuario actual = getActual();
-        return ResponseEntity.ok(actual.getMonitoreosPropios().stream()
-                .map(monitoreoService::convertirAListadoDTO)
-                .collect(Collectors.toList()));
+        return ResponseEntity.ok(monitoreoService.getMisMonitoreosOrdenados(actual));
     }
 
     @GetMapping("/buscar")

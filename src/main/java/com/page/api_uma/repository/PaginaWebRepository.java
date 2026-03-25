@@ -17,4 +17,6 @@ public interface PaginaWebRepository extends JpaRepository<PaginaWeb, Integer> {
     @Query("SELECT p FROM PaginaWeb p WHERE p.nombre LIKE %:term% OR p.url LIKE %:term%")
     List<PaginaWeb> buscarPorTermino(@Param("term") String term);
 
+
+
 }
