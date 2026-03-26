@@ -65,6 +65,7 @@ public class Usuario  implements UserDetails {
 
 
     @Override
+    @JsonIgnore
     public Collection<? extends GrantedAuthority> getAuthorities() {
         // Esto le dice a Spring qué permisos tiene el usuario.
         // Usamos tu campo 'permiso' (que suele ser ADMIN o USER)
@@ -72,31 +73,37 @@ public class Usuario  implements UserDetails {
     }
 
     @Override
+    @JsonIgnore
     public String getPassword() {
         return this.contrasenia; // El campo donde guardas la clave BCrypt
     }
 
     @Override
+    @JsonIgnore
     public String getUsername() {
         return this.email; // Tu "username" es el email para el login
     }
 
     @Override
+    @JsonIgnore
     public boolean isAccountNonExpired() {
         return true; // La cuenta no expira
     }
 
     @Override
+    @JsonIgnore
     public boolean isAccountNonLocked() {
         return true; // La cuenta no está bloqueada
     }
 
     @Override
+    @JsonIgnore
     public boolean isCredentialsNonExpired() {
         return true; // Las credenciales no expiran
     }
 
     @Override
+    @JsonIgnore
     public boolean isEnabled() {
         return true; // El usuario está habilitado
     }
