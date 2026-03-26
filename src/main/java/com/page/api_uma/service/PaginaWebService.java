@@ -17,7 +17,7 @@ public class PaginaWebService {
     }
 
     public List<PaginaWeb> findAll() {
-        return paginaWebRepository.findAll();
+        return paginaWebRepository.findAllByOrderByNombreAsc();
     }
 
     public PaginaWeb findById(Integer id) {

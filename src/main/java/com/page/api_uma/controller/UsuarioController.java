@@ -93,8 +93,8 @@ public class UsuarioController {
         Usuario usuario = service.findById(id);
         if (usuario == null) return ResponseEntity.notFound().build();
 
-        return tienePermiso(id) ?
-                ResponseEntity.ok(convertirADTO(usuario)) :
+        return this.tienePermiso(id) ?
+                ResponseEntity.ok(this.convertirADTO(usuario)) :
                 ResponseEntity.status(HttpStatus.FORBIDDEN).build();
     }
 

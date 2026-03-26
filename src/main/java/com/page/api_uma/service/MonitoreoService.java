@@ -67,8 +67,22 @@ public class MonitoreoService {
             if (payload.containsKey("nombre")) m.setNombre((String) payload.get("nombre"));
             if (payload.containsKey("minutos")) m.setMinutos(((Number) payload.get("minutos")).intValue());
             if (payload.containsKey("repeticiones")) m.setRepeticiones(((Number) payload.get("repeticiones")).intValue());
-
-            return convertirADetalleDTO(monitoreoRepository.save(m));
+            if (payload.containsKey("paginaUrl")) {
+                String nuevaUrl = (String) payload.get("paginaUrl");
+                // Solo hacemos el cambio si la URL es diferente a la que ya tiene
+                if (!nuevaUrl.equals(m.getPaginaWeb().getUrl())) {
+                    PaginaWeb pagina = paginaWebRepository.findByUrl(nuevaUrl)
+                            .orElseGet(() -> {
+                                PaginaWeb nueva = new PaginaWeb();
+                                nueva.setUrl(nuevaUrl);
+                                nueva.setNombre(this.extraerDominio(nuevaUrl));
+                                nueva.setNotaInfo("");
+                                return paginaWebRepository.save(nueva);
+                            });
+                    m.setPaginaWeb(pagina); // Desenlazamos la vieja y enlazamos la nueva
+                }
+            }
+            return this.convertirADetalleDTO(monitoreoRepository.save(m));
         }
         return null;
     }

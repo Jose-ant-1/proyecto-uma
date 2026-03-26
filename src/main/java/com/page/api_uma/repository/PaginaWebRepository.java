@@ -12,11 +12,12 @@ import java.util.Optional;
 
 @Repository
 public interface PaginaWebRepository extends JpaRepository<PaginaWeb, Integer> {
+
     Optional<PaginaWeb> findByUrl(String url);
 
     @Query("SELECT p FROM PaginaWeb p WHERE p.nombre LIKE %:term% OR p.url LIKE %:term%")
     List<PaginaWeb> buscarPorTermino(@Param("term") String term);
 
-
+    List<PaginaWeb> findAllByOrderByNombreAsc();
 
 }
