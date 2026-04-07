@@ -1,10 +1,9 @@
 package com.page.api_uma.controller;
 
-import com.page.api_uma.DTOs.AuthResponse;
-import com.page.api_uma.DTOs.UsuarioDTO;
+import com.page.api_uma.dto.AuthResponse;
+import com.page.api_uma.dto.UsuarioDTO;
 import com.page.api_uma.config.JwtService;
 import com.page.api_uma.model.Usuario;
-import com.page.api_uma.repository.UsuarioRepository;
 import com.page.api_uma.service.UsuarioService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/usuarios")
@@ -26,7 +24,7 @@ public class UsuarioController {
     private final JwtService jwtService;
 
 
-    public UsuarioController(UsuarioService service, AuthenticationManager authenticationManager, JwtService jwtService, UsuarioRepository usuarioRepository) {
+    public UsuarioController(UsuarioService service, AuthenticationManager authenticationManager, JwtService jwtService) {
         this.service = service;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
@@ -84,7 +82,7 @@ public class UsuarioController {
         // Usar getUsuarios() para que vengan ordenados A-Z desde la DB
         List<UsuarioDTO> usuarios = service.getUsuarios().stream()
                 .map(this::convertirADTO)
-                .collect(Collectors.toList());
+                .toList();
         return ResponseEntity.ok(usuarios);
     }
 
@@ -143,7 +141,7 @@ public class UsuarioController {
         List<Usuario> usuarios = service.buscarUsuarios(q);
         List<UsuarioDTO> dtos = usuarios.stream()
                 .map(this::convertirADTO)
-                .collect(Collectors.toList());
+                .toList();
         return ResponseEntity.ok(dtos);
     }
 

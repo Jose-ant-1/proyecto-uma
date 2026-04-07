@@ -1,6 +1,5 @@
 package com.page.api_uma.service;
 
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
@@ -9,7 +8,6 @@ import java.util.List;
 @Service
 public class EmailService {
 
-    @Autowired
     private JavaMailSender mailSender;
 
     public void enviarNotificacionFallo(List<String> destinatarios, String nombrePagina, String url, int codigoEstado) {

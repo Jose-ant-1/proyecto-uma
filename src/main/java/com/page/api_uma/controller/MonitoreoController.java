@@ -1,7 +1,7 @@
 package com.page.api_uma.controller;
 
-import com.page.api_uma.DTOs.MonitoreoDTODetalle;
-import com.page.api_uma.DTOs.MonitoreoListadoDTO;
+import com.page.api_uma.dto.MonitoreoDTODetalle;
+import com.page.api_uma.dto.MonitoreoListadoDTO;
 import com.page.api_uma.model.PaginaWeb;
 import com.page.api_uma.model.Usuario;
 import com.page.api_uma.service.MonitoreoService;
@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/monitoreos")
@@ -67,7 +66,7 @@ public class MonitoreoController {
         Usuario actual = getActual();
         return ResponseEntity.ok(actual.getMonitoreosInvitado().stream()
                 .map(monitoreoService::convertirAListadoDTO)
-                .collect(Collectors.toList()));
+                .toList());
     }
 
     @GetMapping("/all")
@@ -115,9 +114,8 @@ public class MonitoreoController {
         return actualizado != null ? ResponseEntity.ok(actualizado) : ResponseEntity.notFound().build();
     }
 
-
     @PutMapping("/invitar")
-    public ResponseEntity<?> invitar(@RequestBody List<Integer> ids, @RequestParam List<String> emails) {
+    public ResponseEntity<Void> invitar(@RequestBody List<Integer> ids, @RequestParam List<String> emails) {
         if (ids == null || emails == null || ids.isEmpty() || emails.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }
@@ -127,7 +125,7 @@ public class MonitoreoController {
     }
 
     @DeleteMapping("/invitar")
-    public ResponseEntity<?> quitarInvitados(@RequestBody List<Integer> ids, @RequestParam List<String> emails) {
+    public ResponseEntity<Void> quitarInvitados(@RequestBody List<Integer> ids, @RequestParam List<String> emails) {
         if (ids == null || emails == null || ids.isEmpty() || emails.isEmpty()) {
             return ResponseEntity.badRequest().build();
         }

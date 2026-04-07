@@ -1,6 +1,7 @@
 package com.page.api_uma.repository;
 
 import com.page.api_uma.model.Usuario;
+import jakarta.transaction.Transactional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -17,13 +18,14 @@ public interface UsuarioRepository extends JpaRepository<Usuario, Integer> {
     List<Usuario> buscarPorTermino(@Param("term") String term);
 
     @Modifying
-    @Query(value = "DELETE FROM monitoreo_plantilla_mon WHERE id_monitoreo IN (SELECT id FROM monitoreos WHERE propietario_id = :userId)", nativeQuery = true)
+    @Transactional
+    @Query(value = "DELETE FROM monitoreo_plantillaMon WHERE id_monitoreo IN (SELECT id FROM monitoreos WHERE propietario_id = :userId)", nativeQuery = true)
     void eliminarRelacionesDePlantillasDeSusMonitoreos(@Param("userId") Integer userId);
 
     @Modifying
-    @Query(value = "DELETE FROM usuario_plantilla_usuar WHERE id_usuario = :userId", nativeQuery = true)
+    @Transactional
+    @Query(value = "DELETE FROM usuario_plantillaUsuar WHERE id_usuario = :userId", nativeQuery = true)
     void eliminarRelacionesEnPlantillasUsuario(@Param("userId") Integer userId);
-
     List<Usuario> findAllByOrderByNombreAsc();
 
 }

@@ -25,6 +25,8 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthFilter;
     private final AuthenticationProvider authenticationProvider;
 
+    private static final String ADMIN = "ADMIN";
+
     public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter, AuthenticationProvider authenticationProvider) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.authenticationProvider = authenticationProvider;
@@ -50,9 +52,9 @@ public class SecurityConfig {
 
                         // 4. RESTRICCIONES DE ADMIN (Solo ADMIN puede crear, editar otros o borrar)
                         // Importante: .hasAuthority("ADMIN") debe coincidir con lo que devuelve tu Usuario.getAuthorities()
-                        .requestMatchers(HttpMethod.POST, "/api/usuarios").hasAuthority("ADMIN")
-                        .requestMatchers(HttpMethod.PUT, "/api/usuarios/**").hasAuthority("ADMIN")
-                        .requestMatchers(HttpMethod.DELETE, "/api/usuarios/**").hasAuthority("ADMIN")
+                        .requestMatchers(HttpMethod.POST, "/api/usuarios").hasAuthority(ADMIN)
+                        .requestMatchers(HttpMethod.PUT, "/api/usuarios/**").hasAuthority(ADMIN)
+                        .requestMatchers(HttpMethod.DELETE, "/api/usuarios/**").hasAuthority(ADMIN)
 
                         // 5. RESTO DE MÓDULOS (Acceso general autenticado)
                         .requestMatchers("/api/monitoreos/**").authenticated()
@@ -74,7 +76,16 @@ public class SecurityConfig {
         CorsConfiguration configuration = new CorsConfiguration();
         configuration.setAllowedOrigins(List.of("http://localhost:4200"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
-        configuration.setAllowedHeaders(Arrays.asList("Authorization", "Content-Type", "Accept"));
+
+        // MODIFICACIÓN AQUÍ: Añadimos x-xsrf-token y X-Requested-With
+        configuration.setAllowedHeaders(Arrays.asList(
+                "Authorization",
+                "Content-Type",
+                "Accept",
+                "x-xsrf-token",
+                "X-Requested-With"
+        ));
+
         configuration.setAllowCredentials(true);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

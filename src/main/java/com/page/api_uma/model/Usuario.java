@@ -45,23 +45,23 @@ public class Usuario  implements UserDetails {
 
     @ManyToMany(mappedBy = "usuarios")
     @JsonIgnore
-    private Set<PlantillaUsuario> plantillaUsuarios = new HashSet<>();
+    private transient Set<PlantillaUsuario> plantillaUsuarios = new HashSet<>();
 
     @OneToMany(mappedBy = "propietario", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
-    private List<Monitoreo> monitoreosPropios;
+    private transient List<Monitoreo> monitoreosPropios;
 
     @ManyToMany(mappedBy = "invitados")
     @JsonIgnore
-    private Set<Monitoreo> monitoreosInvitado;
+    private transient Set<Monitoreo> monitoreosInvitado;
 
     @OneToMany(mappedBy = "propietario", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
-    private List<PlantillaMonitoreo> plantillasMonitoreoPropias;
+    private transient List<PlantillaMonitoreo> plantillasMonitoreoPropias;
 
     @OneToMany(mappedBy = "propietario", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
-    private List<PlantillaUsuario> plantillasUsuarioPropias;
+    private transient List<PlantillaUsuario> plantillasUsuarioPropias;
 
 
     @Override

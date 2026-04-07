@@ -1,8 +1,8 @@
 package com.page.api_uma.service;
 
-import com.page.api_uma.DTOs.MonitoreoDTODetalle;
-import com.page.api_uma.DTOs.MonitoreoListadoDTO;
-import com.page.api_uma.DTOs.UsuarioDTO;
+import com.page.api_uma.dto.MonitoreoDTODetalle;
+import com.page.api_uma.dto.MonitoreoListadoDTO;
+import com.page.api_uma.dto.UsuarioDTO;
 import com.page.api_uma.model.Monitoreo;
 import com.page.api_uma.model.PaginaWeb;
 import com.page.api_uma.model.Usuario;

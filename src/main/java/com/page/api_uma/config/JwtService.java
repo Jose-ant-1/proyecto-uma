@@ -4,24 +4,25 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import io.jsonwebtoken.security.Keys;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import java.security.Key;
 import java.util.Date;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.function.Function;
 
 @Service
 public class JwtService {
 
     // En producción debería ir en un archivo de configuración secreto.
-    private static final String SECRET_KEY = "la_clave_secreta_super_larga_y_segura_para_el_proyecto_uma";
+    @Value("${app.security.jwt.secret}")
+    private String secretKey;
+
     private static final long JWT_EXPIRATION = 86400000; // 24 horas en milisegundos
 
     private Key getSignInKey() {
-        return Keys.hmacShaKeyFor(SECRET_KEY.getBytes());
+        return Keys.hmacShaKeyFor(secretKey.getBytes());
     }
 
     // Generar el token cuando el usuario hace login

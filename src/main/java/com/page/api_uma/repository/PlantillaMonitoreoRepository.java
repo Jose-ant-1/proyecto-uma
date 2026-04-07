@@ -1,7 +1,6 @@
 package com.page.api_uma.repository;
 
 import com.page.api_uma.model.PlantillaMonitoreo;
-import com.page.api_uma.model.PlantillaUsuario;
 import com.page.api_uma.model.Usuario;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;

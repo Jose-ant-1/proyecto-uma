@@ -1,4 +1,4 @@
-package com.page.api_uma.DTOs;
+package com.page.api_uma.dto;
 
 import lombok.*;
 

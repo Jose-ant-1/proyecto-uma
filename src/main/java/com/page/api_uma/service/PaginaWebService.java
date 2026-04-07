@@ -1,5 +1,7 @@
 package com.page.api_uma.service;
 
+import com.page.api_uma.dto.PaginaWebDTO;
+import com.page.api_uma.mapper.PaginaWebMapper;
 import com.page.api_uma.model.PaginaWeb;
 import com.page.api_uma.repository.PaginaWebRepository;
 import org.springframework.stereotype.Service;
@@ -11,9 +13,11 @@ import java.util.List;
 public class PaginaWebService {
 
     private final PaginaWebRepository paginaWebRepository;
+    private final PaginaWebMapper paginaWebMapper;
 
-    public PaginaWebService(PaginaWebRepository paginaWebRepository) {
+    public PaginaWebService(PaginaWebRepository paginaWebRepository, PaginaWebMapper paginaWebMapper) {
         this.paginaWebRepository = paginaWebRepository;
+        this.paginaWebMapper = paginaWebMapper;
     }
 
     public List<PaginaWeb> findAll() {
@@ -24,8 +28,9 @@ public class PaginaWebService {
         return paginaWebRepository.findById(id).orElse(null);
     }
 
-    public PaginaWeb save(PaginaWeb paginaWeb) {
-        return paginaWebRepository.save(paginaWeb);
+    public PaginaWeb save(PaginaWebDTO paginaWeb) {
+        PaginaWeb entidad = paginaWebMapper.toEntity(paginaWeb);
+        return paginaWebRepository.save(entidad);
     }
 
     public void deleteById(Integer id) {

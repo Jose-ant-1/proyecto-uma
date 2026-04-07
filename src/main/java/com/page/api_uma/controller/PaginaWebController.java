@@ -1,12 +1,10 @@
 package com.page.api_uma.controller;
 
+import com.page.api_uma.dto.PaginaWebDTO;
 import com.page.api_uma.model.PaginaWeb;
-import com.page.api_uma.model.Usuario;
 import com.page.api_uma.service.PaginaWebService;
-import com.page.api_uma.service.UsuarioService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -16,11 +14,9 @@ import java.util.List;
 public class PaginaWebController {
 
     private final PaginaWebService paginaService;
-    private final UsuarioService usuarioService;
 
-    public PaginaWebController(PaginaWebService service, UsuarioService usuarioService) {
+    public PaginaWebController(PaginaWebService service) {
         this.paginaService = service;
-        this.usuarioService = usuarioService;
     }
 
     @GetMapping
@@ -44,12 +40,12 @@ public class PaginaWebController {
     }
 
     @PostMapping
-    public ResponseEntity<PaginaWeb> create(@RequestBody PaginaWeb pagina) {
+    public ResponseEntity<PaginaWeb> create(@RequestBody PaginaWebDTO pagina) {
         return ResponseEntity.status(HttpStatus.CREATED).body(paginaService.save(pagina));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<PaginaWeb> update(@PathVariable Integer id, @RequestBody PaginaWeb detalle) {
+    public ResponseEntity<PaginaWeb> update(@PathVariable Integer id, @RequestBody PaginaWebDTO detalle) {
         PaginaWeb existe = paginaService.findById(id);
         if (existe != null) {
             detalle.setId(id);
