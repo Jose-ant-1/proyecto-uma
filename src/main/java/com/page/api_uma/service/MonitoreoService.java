@@ -21,6 +21,7 @@ import java.util.stream.Stream;
 @Service
 public class MonitoreoService {
 
+    private static final String ADMIN = "ADMIN";
     private final MonitoreoRepository monitoreoRepository;
     private final PaginaWebRepository paginaWebRepository;
     private final PaginaWebService paginaWebService;
@@ -61,7 +62,7 @@ public class MonitoreoService {
         Monitoreo m = monitoreoRepository.findById(id).orElse(null);
 
         // Lógica de autorización: Dueño o ADMIN
-        boolean esAutorizado = m != null && (m.getPropietario().getId() == usuarioId || "ADMIN".equals(permiso));
+        boolean esAutorizado = m != null && (m.getPropietario().getId() == usuarioId || ADMIN.equals(permiso));
 
         if (esAutorizado) {
             if (payload.containsKey("nombre")) m.setNombre((String) payload.get("nombre"));
@@ -92,7 +93,7 @@ public class MonitoreoService {
         Monitoreo m = monitoreoRepository.findById(id).orElse(null);
         if (m == null) return false;
 
-        boolean esAutorizado = m.getPropietario().getId() == usuarioId || "ADMIN".equals(permiso);
+        boolean esAutorizado = m.getPropietario().getId() == usuarioId || ADMIN.equals(permiso);
 
         if (esAutorizado) {
             // Limpiar invitados
@@ -117,7 +118,7 @@ public class MonitoreoService {
             // Lógica de permisos:
             boolean esDuenio = m.getPropietario().getId() == usuarioId;
             boolean esInvitado = m.getInvitados().stream().anyMatch(inv -> inv.getId() == usuarioId);
-            boolean esAdmin = "ADMIN".equalsIgnoreCase(u.getPermiso());
+            boolean esAdmin = ADMIN.equalsIgnoreCase(u.getPermiso());
 
             // SI ES ADMIN, LE DEJAMOS PASAR SIEMPRE
             if (esDuenio || esInvitado || esAdmin) {
@@ -130,7 +131,7 @@ public class MonitoreoService {
     public List<MonitoreoListadoDTO> findAll() {
         return monitoreoRepository.findAll().stream()
                 .map(this::convertirAListadoDTO)
-                .collect(Collectors.toList());
+                .toList();
     }
 
     public PaginaWeb obtenerPaginaPorMonitoreoId(int monitoreoId, int usuarioId) {
@@ -204,11 +205,11 @@ public class MonitoreoService {
                 })
                 .map(this::convertirAListadoDTO)
                 .distinct()
-                .collect(Collectors.toList());
+                .toList();
     }
 
-    @Transactional
-    protected MonitoreoDTODetalle eliminarInvitado(int monitoreoId, int propietarioId, String emailInvitado) {
+
+    private MonitoreoDTODetalle eliminarInvitado(int monitoreoId, int propietarioId, String emailInvitado) {
         Monitoreo m = monitoreoRepository.findById(monitoreoId).orElse(null);
         Usuario invitado = usuarioService.buscarPorEmail(emailInvitado);
 
@@ -225,8 +226,7 @@ public class MonitoreoService {
         return null;
     }
 
-    @Transactional
-    protected MonitoreoDTODetalle toggleInvitado(int monitoreoId, int propietarioId, String emailInvitado) {
+    private MonitoreoDTODetalle toggleInvitado(int monitoreoId, int propietarioId, String emailInvitado) {
         Monitoreo m = monitoreoRepository.findById(monitoreoId).orElse(null);
         Usuario invitado = usuarioService.buscarPorEmail(emailInvitado);
 
@@ -267,7 +267,7 @@ public class MonitoreoService {
         return monitoreoRepository.findAllByPropietarioOrderByNombreAsc(propietario)
                 .stream()
                 .map(this::convertirAListadoDTO) // Usa tu método de conversión existente
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private UsuarioDTO mapearUsuarioADTO(Usuario u) {

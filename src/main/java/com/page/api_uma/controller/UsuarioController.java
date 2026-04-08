@@ -3,6 +3,7 @@ package com.page.api_uma.controller;
 import com.page.api_uma.dto.AuthResponse;
 import com.page.api_uma.dto.UsuarioDTO;
 import com.page.api_uma.config.JwtService;
+import com.page.api_uma.dto.UsuarioUpdateDTO;
 import com.page.api_uma.model.Usuario;
 import com.page.api_uma.service.UsuarioService;
 import org.springframework.http.HttpStatus;
@@ -31,10 +32,14 @@ public class UsuarioController {
     }
 
     @PutMapping("/me")
-    public ResponseEntity<?> updateMe(@RequestBody Usuario datosRecibidos) {
+    public ResponseEntity<Object> updateMe(@RequestBody UsuarioUpdateDTO datosRecibidos) {
+        // Obtenemos el usuario real de la base de datos (sesión segura)
         Usuario actual = service.getUsuarioAutenticado();
+        if (actual == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
-        // nombre y email
+        // 1. Limpieza y validación de Nombre/Email
         String nombreLimpio = datosRecibidos.getNombre() != null ? datosRecibidos.getNombre().trim() : "";
         String emailLimpio = datosRecibidos.getEmail() != null ? datosRecibidos.getEmail().trim() : "";
 
@@ -42,28 +47,31 @@ public class UsuarioController {
             return ResponseEntity.badRequest().body("El nombre y el email no pueden estar vacíos.");
         }
 
+        // Seteamos solo lo permitido para el propio usuario
         actual.setNombre(nombreLimpio);
         actual.setEmail(emailLimpio);
 
-        // VALIDACIÓN DE CONTRASEÑA
+        // IMPORTANTE: No mapeamos datosRecibidos.getPermiso() aquí por seguridad.
+
+        // 2. Validación de contraseña
         if (datosRecibidos.getContrasenia() != null) {
             String passNueva = datosRecibidos.getContrasenia();
 
-            // Si el usuario intentó mandar algo que solo son espacios o está vacío
-            if (passNueva.isBlank()) {
-                // No hacemos nada o devolvemos error.
-                // si el usuario está editando su PERFIL (nombre/email), ignoramos el campo de contraseña si viene vacío/blanco.
-                // si es un cambio explícito de password, lanzamos error:
-                if (!passNueva.isEmpty()) {
-                    return ResponseEntity.badRequest().body("La contraseña no puede consistir solo en espacios.");
+            // Si es una cadena de puros espacios pero no está vacía ("   ")
+            if (passNueva.isBlank() && !passNueva.isEmpty()) {
+                return ResponseEntity.badRequest().body("La contraseña no puede consistir solo en espacios.");
+            }
+            // Si el usuario escribió algo, validamos longitud mínima
+            else if (!passNueva.isEmpty()) {
+                if (passNueva.length() < 4) {
+                    return ResponseEntity.badRequest().body("La contraseña debe tener al menos 4 caracteres.");
                 }
-            } else if (passNueva.length() < 4) {
-                return ResponseEntity.badRequest().body("La contraseña debe tener al menos 4 caracteres.");
-            } else {
                 actual.setContrasenia(passNueva);
             }
+            // Si passNueva.isEmpty() es true, simplemente no entramos al else y no se cambia
         }
 
+        // 3. Guardar (el service se encarga del hashing) y devolver el DTO de lectura
         Usuario guardado = service.save(actual);
         return ResponseEntity.ok(convertirADTO(guardado));
     }
@@ -97,35 +105,36 @@ public class UsuarioController {
     }
 
     @PostMapping
-    public ResponseEntity<UsuarioDTO> create(@RequestBody Usuario usuario) {
-        Usuario guardado = service.save(usuario);
+    public ResponseEntity<UsuarioDTO> create(@RequestBody UsuarioUpdateDTO dto) {
+        Usuario nuevo = new Usuario();
+        nuevo.setNombre(dto.getNombre());
+        nuevo.setEmail(dto.getEmail());
+        nuevo.setContrasenia(dto.getContrasenia());
+        // Si el admin no manda permiso, por defecto es USER
+        nuevo.setPermiso(dto.getPermiso() != null ? dto.getPermiso() : "USER");
+
+        Usuario guardado = service.save(nuevo);
         return ResponseEntity.status(HttpStatus.CREATED).body(convertirADTO(guardado));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<UsuarioDTO> update(@PathVariable Integer id, @RequestBody Usuario datosRecibidos) {
-        // Buscamos el usuario que está en la base de datos
+    public ResponseEntity<UsuarioDTO> update(@PathVariable Integer id, @RequestBody UsuarioUpdateDTO datosRecibidos) {
         Usuario usuarioExistente = service.findById(id);
 
         if (usuarioExistente != null) {
-            // Actualizamos solo los campos básicos
-            usuarioExistente.setNombre(datosRecibidos.getNombre());
-            usuarioExistente.setEmail(datosRecibidos.getEmail());
-            usuarioExistente.setPermiso(datosRecibidos.getPermiso());
+            // Actualizamos campos permitidos para el admin
+            if (datosRecibidos.getNombre() != null) usuarioExistente.setNombre(datosRecibidos.getNombre());
+            if (datosRecibidos.getEmail() != null) usuarioExistente.setEmail(datosRecibidos.getEmail());
+            if (datosRecibidos.getPermiso() != null) usuarioExistente.setPermiso(datosRecibidos.getPermiso());
 
-            // si recibimos una contraseña que no esté vacía, la actualizamos.
-            // Si viene vacía o nula, mantenemos la que ya tenía el usuarioExistente
+            // Solo actualizamos contraseña si viene algo de texto
             if (datosRecibidos.getContrasenia() != null && !datosRecibidos.getContrasenia().isBlank()) {
                 usuarioExistente.setContrasenia(datosRecibidos.getContrasenia());
             }
 
-            // Guardamos el objeto
-            // el service.save() ya se encripta si no empieza por $2a$
             Usuario guardado = service.save(usuarioExistente);
-
             return ResponseEntity.ok(convertirADTO(guardado));
         }
-
         return ResponseEntity.notFound().build();
     }
 

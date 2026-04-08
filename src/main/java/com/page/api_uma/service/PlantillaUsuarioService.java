@@ -1,5 +1,7 @@
 package com.page.api_uma.service;
 
+import com.page.api_uma.dto.PlantillaUsuarioDTO;
+import com.page.api_uma.mapper.PlantillaUsuarioMapper;
 import com.page.api_uma.model.PlantillaUsuario;
 import com.page.api_uma.model.Usuario;
 import com.page.api_uma.repository.PlantillaUsuarioRepository;
@@ -13,10 +15,13 @@ public class PlantillaUsuarioService {
 
     private final PlantillaUsuarioRepository plantillaUsuarioRepository;
     private final UsuarioRepository usuarioRepository;
+    private final PlantillaUsuarioMapper mapper;
 
-    public PlantillaUsuarioService(PlantillaUsuarioRepository plantillaInvitacionRepository, UsuarioRepository usuarioRepository) {
+
+    public PlantillaUsuarioService(PlantillaUsuarioRepository plantillaInvitacionRepository, UsuarioRepository usuarioRepository, PlantillaUsuarioMapper mapper) {
         this.plantillaUsuarioRepository = plantillaInvitacionRepository;
         this.usuarioRepository = usuarioRepository;
+        this.mapper = mapper;
     }
 
     public List<PlantillaUsuario> findAll() {
@@ -27,8 +32,15 @@ public class PlantillaUsuarioService {
         return plantillaUsuarioRepository.findById(id).orElse(null);
     }
 
-    public PlantillaUsuario save(PlantillaUsuario plantillaUsuario) {
-        return plantillaUsuarioRepository.save(plantillaUsuario);
+    public PlantillaUsuarioDTO save(PlantillaUsuarioDTO dto, String emailPropietario) {
+        PlantillaUsuario entidad = mapper.toEntity(dto);
+
+        // Asignamos el dueño real desde la base de datos por seguridad
+        Usuario owner = usuarioRepository.findByEmail(emailPropietario);
+        entidad.setPropietario(owner);
+
+        PlantillaUsuario guardada = plantillaUsuarioRepository.save(entidad);
+        return mapper.toDTO(guardada);
     }
 
     public List<PlantillaUsuario> findByPropietario(String email) {

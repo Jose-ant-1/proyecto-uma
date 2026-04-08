@@ -41,7 +41,7 @@ public class PaginaWebService {
         try {
             if (!urlString.startsWith("http")) urlString = "https://" + urlString;
 
-            java.net.URL url = new java.net.URL(urlString);
+            java.net.URL url = java.net.URI.create(urlString).toURL();
             java.net.HttpURLConnection connection = (java.net.HttpURLConnection) url.openConnection();
 
             // Disfraz de usuario normal

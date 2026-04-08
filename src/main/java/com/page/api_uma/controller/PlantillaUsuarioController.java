@@ -1,10 +1,10 @@
 package com.page.api_uma.controller;
 
 
+import com.page.api_uma.dto.PlantillaUsuarioDTO;
+import com.page.api_uma.mapper.PlantillaUsuarioMapper;
 import com.page.api_uma.model.PlantillaUsuario;
-import com.page.api_uma.model.Usuario;
 import com.page.api_uma.service.PlantillaUsuarioService;
-import com.page.api_uma.service.UsuarioService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,17 +17,17 @@ import java.util.List;
 public class PlantillaUsuarioController {
 
     private final PlantillaUsuarioService service;
-    private final UsuarioService usuarioService;
+    private final PlantillaUsuarioMapper mapper;
 
-    public PlantillaUsuarioController(PlantillaUsuarioService service, UsuarioService usuarioService) {
+    public PlantillaUsuarioController(PlantillaUsuarioService service, PlantillaUsuarioMapper mapper) {
         this.service = service;
-        this.usuarioService = usuarioService;
+        this.mapper = mapper;
     }
 
     @GetMapping
-    public List<PlantillaUsuario> findAll(Principal principal) {
-        // Solo las del usuario logueado
-        return service.findByPropietario(principal.getName());
+    public ResponseEntity<List<PlantillaUsuarioDTO>> findAll(Principal principal) {
+        List<PlantillaUsuario> lista = service.findByPropietario(principal.getName());
+        return ResponseEntity.ok(mapper.toDTOList(lista));
     }
 
     @GetMapping("/{id}")
@@ -39,23 +39,18 @@ public class PlantillaUsuarioController {
     }
 
     @PostMapping
-    public PlantillaUsuario create(@RequestBody PlantillaUsuario plantilla, Principal principal) {
-        // Asignamos el dueño automáticamente según la sesión
-        Usuario owner = usuarioService.findByEmail(principal.getName());
-        plantilla.setPropietario(owner);
-        return service.save(plantilla);
+    public ResponseEntity<PlantillaUsuarioDTO> create(@RequestBody PlantillaUsuarioDTO dto, Principal principal) {
+        // Pasamos el email del principal para que el service asigne el dueño
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.save(dto, principal.getName()));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<PlantillaUsuario> update(@PathVariable Integer id, @RequestBody PlantillaUsuario detalle, Principal principal) {
+    public ResponseEntity<PlantillaUsuarioDTO> update(@PathVariable Integer id, @RequestBody PlantillaUsuarioDTO dto, Principal principal) {
         if (!service.esPropietario(id, principal.getName())) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        detalle.setId(id);
-        // Mantener el propietario original
-        Usuario owner = usuarioService.findByEmail(principal.getName());
-        detalle.setPropietario(owner);
-        return ResponseEntity.ok(service.save(detalle));
+        dto.setId(id);
+        return ResponseEntity.ok(service.save(dto, principal.getName()));
     }
 
     @DeleteMapping("/{id}")

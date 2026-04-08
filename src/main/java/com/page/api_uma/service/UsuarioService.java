@@ -33,11 +33,10 @@ public class UsuarioService implements UserDetailsService {
     }
 
     public Usuario save(Usuario usuario) {
-        if (usuario.getContrasenia() != null && !usuario.getContrasenia().isBlank()) {
-            // Solo encriptar si NO es ya un hash de BCrypt
-            if (!usuario.getContrasenia().startsWith("$2a$")) {
-                usuario.setContrasenia(passwordEncoder.encode(usuario.getContrasenia()));
-            }
+        if (usuario.getContrasenia() != null &&
+                !usuario.getContrasenia().isBlank() &&
+                !usuario.getContrasenia().startsWith("$2a$")) {
+            usuario.setContrasenia(passwordEncoder.encode(usuario.getContrasenia()));
         }
         return usuarioRepository.save(usuario);
     }
@@ -49,9 +48,9 @@ public class UsuarioService implements UserDetailsService {
         if (usuario != null) {
             // Limpiar relaciones donde el usuario es "invitado"
 
-            usuario.getMonitoreosInvitado().forEach(monitoreo -> {
-                monitoreo.getInvitados().remove(usuario);
-            });
+            usuario.getMonitoreosInvitado().forEach(monitoreo ->
+                    monitoreo.getInvitados().remove(usuario)
+            );
             usuario.getMonitoreosInvitado().clear();
 
             // Limpiar tablas intermedias conflictivas vía Repositorio

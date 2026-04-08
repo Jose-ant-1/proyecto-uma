@@ -20,7 +20,6 @@
 
         <sonar.host.url>http://localhost:9000</sonar.host.url>
         <sonar.projectKey>proyecto-backend</sonar.projectKey>
-        <sonar.token>sqp_296244a86e7992c7b638276a8229d5a89b3a2f0d</sonar.token>
     </properties>
 
     <dependencies>

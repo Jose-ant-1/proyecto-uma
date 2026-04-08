@@ -1,5 +1,8 @@
 package com.page.api_uma.service;
 
+import com.page.api_uma.dto.PlantillaMonitoreoDTO;
+import com.page.api_uma.exception.ResourceNotFoundException;
+import com.page.api_uma.mapper.PlantillaMonitoreoMapper;
 import com.page.api_uma.model.Monitoreo;
 import com.page.api_uma.model.PlantillaMonitoreo;
 import com.page.api_uma.model.Usuario;
@@ -10,7 +13,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class PlantillaMonitoreoService {
@@ -19,12 +21,14 @@ public class PlantillaMonitoreoService {
     private final UsuarioService usuarioService;
     private final MonitoreoRepository monitoreoRepository;
     private final UsuarioRepository usuarioRepository;
+    private final PlantillaMonitoreoMapper mapper;
 
-    public PlantillaMonitoreoService(PlantillaMonitoreoRepository plantillaMonitoreoRepository, UsuarioService usuarioService, MonitoreoRepository monitoreoRepository, UsuarioRepository usuarioRepository) {
+    public PlantillaMonitoreoService(PlantillaMonitoreoRepository plantillaMonitoreoRepository, UsuarioService usuarioService, MonitoreoRepository monitoreoRepository, UsuarioRepository usuarioRepository, PlantillaMonitoreoMapper mapper) {
         this.plantillaMonitoreoRepository = plantillaMonitoreoRepository;
         this.usuarioService = usuarioService;
         this.monitoreoRepository = monitoreoRepository;
         this.usuarioRepository = usuarioRepository;
+        this.mapper = mapper;
     }
 
     public List<PlantillaMonitoreo> findAll() {
@@ -35,8 +39,13 @@ public class PlantillaMonitoreoService {
         return plantillaMonitoreoRepository.findById(id).orElse(null);
     }
 
-    public PlantillaMonitoreo save(PlantillaMonitoreo plantillaPagina) {
-        return plantillaMonitoreoRepository.save(plantillaPagina);
+    public PlantillaMonitoreoDTO save(PlantillaMonitoreoDTO dto) {
+        // DTO -> Entidad
+        PlantillaMonitoreo entidad = mapper.toEntity(dto);
+        // Si necesitas asignar el propietario manualmente:
+        PlantillaMonitoreo guardada = plantillaMonitoreoRepository.save(entidad);
+        // Entidad -> DTO
+        return mapper.toDTO(guardada);
     }
 
     public void deleteById(Integer id) {
@@ -50,7 +59,7 @@ public class PlantillaMonitoreoService {
         // Filtramos mediante Stream para asegurar la regla de propiedad total
         return todasLasPlantillas.stream()
                 .filter(plantilla -> isPropietarioTotal(plantilla, usuarioId))
-                .collect(Collectors.toList());
+                .toList();
     }
 
     private boolean isPropietarioTotal(PlantillaMonitoreo plantilla, int usuarioId) {
@@ -70,11 +79,11 @@ public class PlantillaMonitoreoService {
     public void aplicarPlantillaAUsuario(int plantillaId, String emailInvitado, int propietarioId) {
         // Buscamos la plantilla
         PlantillaMonitoreo plantilla = plantillaMonitoreoRepository.findById(plantillaId)
-                .orElseThrow(() -> new RuntimeException("Plantilla no encontrada"));
+                .orElseThrow(() -> new ResourceNotFoundException("Plantilla no encontrada"));
 
         // Buscamos al usuario que va a recibir los accesos
         Usuario invitado = usuarioService.buscarPorEmail(emailInvitado);
-        if (invitado == null) throw new RuntimeException("Usuario a invitar no encontrado");
+        if (invitado == null) throw new ResourceNotFoundException("Usuario a invitar no encontrado");
 
         // Recorremos los monitoreos de la plantilla
         for (Monitoreo m : plantilla.getMonitoreos()) {

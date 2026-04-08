@@ -2,31 +2,26 @@ package com.page.api_uma.service;
 
 import com.page.api_uma.model.Monitoreo;
 import com.page.api_uma.repository.MonitoreoRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Service
+@Slf4j
 public class MonitoreoTaskService {
 
-    private static final Logger logger = LoggerFactory.getLogger(MonitoreoTaskService.class);
-
-    @Autowired
     private MonitoreoRepository repository;
-
-    @Autowired
+    
     private RestTemplate restTemplate;
 
-    @Autowired
     private EmailService emailService;
 
     @Scheduled(fixedRate = 30000)
@@ -49,7 +44,7 @@ public class MonitoreoTaskService {
     private void realizarCheck(Monitoreo m) {
         String urlOriginal = m.getPaginaWeb().getUrl();
 
-        System.out.println("Iniciando revisión para: " + m.getNombre() + " (" + urlOriginal + ")");
+        log.info("Iniciando revisión para: {} ({})", m.getNombre(), urlOriginal);
         try {
             String urlFinal = urlOriginal.startsWith("http") ? urlOriginal : "https://" + urlOriginal;
 

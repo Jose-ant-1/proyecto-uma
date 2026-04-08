@@ -1,10 +1,12 @@
 package com.page.api_uma.controller;
 
 
+import com.page.api_uma.dto.PlantillaMonitoreoDTO;
 import com.page.api_uma.model.PlantillaMonitoreo;
 import com.page.api_uma.model.Usuario;
 import com.page.api_uma.service.PlantillaMonitoreoService;
 import com.page.api_uma.service.UsuarioService;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -42,13 +44,12 @@ public class PlantillaMonitoreoController {
     }
 
     @PostMapping
-    public PlantillaMonitoreo create(@RequestBody PlantillaMonitoreo pagina) {
-        // Obtenemos el usuario autenticado
-        Usuario actual = usuarioService.getUsuarioAutenticado();
-        // Le asignamos ese usuario como propietario a la plantilla
-        pagina.setPropietario(actual);
-        // guardamos
-        return service.save(pagina);
+    public ResponseEntity<PlantillaMonitoreoDTO> create(@RequestBody PlantillaMonitoreoDTO dto) {
+        // Guardamos a través del service
+        PlantillaMonitoreoDTO resultado = service.save(dto);
+
+        // Devolvemos 201 Created con el objeto en el cuerpo
+        return ResponseEntity.status(HttpStatus.CREATED).body(resultado);
     }
 
     @PostMapping("/{id}/aplicar")
@@ -61,18 +62,16 @@ public class PlantillaMonitoreoController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<PlantillaMonitoreo> update(@PathVariable Integer id, @RequestBody PlantillaMonitoreo detalle) {
-        PlantillaMonitoreo existe = service.findById(id);
-
-        if (existe != null) {
-            // Mantenemos el propietario que  tenía la plantilla en la DB
-            detalle.setPropietario(existe.getPropietario());
-            // Aseguramos el ID
-            detalle.setId(id);
-            // Guardamos
-            return ResponseEntity.ok(service.save(detalle));
+    public ResponseEntity<PlantillaMonitoreoDTO> update(@PathVariable Integer id, @RequestBody PlantillaMonitoreoDTO dto) {
+        // Validamos si existe antes de actualizar
+        if (service.findById(id) == null) {
+            return ResponseEntity.notFound().build();
         }
-        return ResponseEntity.notFound().build();
+
+        dto.setId(id); // Aseguramos que actualice el ID correcto
+        PlantillaMonitoreoDTO actualizado = service.save(dto);
+
+        return ResponseEntity.ok(actualizado);
     }
 
     @DeleteMapping("/{id}")

@@ -32,6 +32,7 @@ public class SecurityConfig {
         this.authenticationProvider = authenticationProvider;
     }
 
+    @SuppressWarnings("squid:S4502")
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
