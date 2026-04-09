@@ -9,6 +9,8 @@ import com.page.api_uma.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 public class PlantillaUsuarioService {
@@ -38,6 +40,15 @@ public class PlantillaUsuarioService {
         // Asignamos el dueño real desde la base de datos por seguridad
         Usuario owner = usuarioRepository.findByEmail(emailPropietario);
         entidad.setPropietario(owner);
+
+        if (dto.getUsuarios() != null && !dto.getUsuarios().isEmpty()) {
+            Set<Usuario> usuariosReal = dto.getUsuarios().stream()
+                    .map(u -> usuarioRepository.findById(u.getId())
+                            .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + u.getId())))
+                    .collect(Collectors.toSet());
+
+            entidad.setUsuarios(usuariosReal);
+        }
 
         PlantillaUsuario guardada = plantillaUsuarioRepository.save(entidad);
         return mapper.toDTO(guardada);

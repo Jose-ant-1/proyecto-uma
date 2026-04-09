@@ -58,11 +58,11 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.DELETE, "/api/usuarios/**").hasAuthority(ADMIN)
 
                         // 5. RESTO DE MÓDULOS (Acceso general autenticado)
-                        .requestMatchers("/api/monitoreos/**").authenticated()
+                        .requestMatchers(HttpMethod.GET, "/api/monitoreos/**").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/paginas/**").authenticated()
+                        .requestMatchers("/api/plantillaMonitoreo/**").authenticated()
                         .requestMatchers("/api/plantillaPagina/**").authenticated()
                         .requestMatchers("/api/plantillaUsuario/**").authenticated()
-
                         // 6. CUALQUIER OTRA PETICIÓN
                         .anyRequest().authenticated()
                 )

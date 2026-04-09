@@ -8,8 +8,10 @@ import com.page.api_uma.service.MonitoreoService;
 import com.page.api_uma.service.UsuarioService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -62,8 +64,16 @@ public class MonitoreoController {
     }
 
     @GetMapping("/colaboraciones")
+    @Transactional(readOnly = true) // Añade esto para mantener la sesión de BD abierta
     public ResponseEntity<List<MonitoreoListadoDTO>> getMonitoreosInvitado() {
         Usuario actual = getActual();
+
+        if (actual == null || actual.getMonitoreosInvitado() == null) {
+            return ResponseEntity.ok(Collections.emptyList());
+        }
+
+        // Al llamar a .size() o al stream dentro de una transacción,
+        // forzamos a Hibernate a ir a la BD a por los datos.
         return ResponseEntity.ok(actual.getMonitoreosInvitado().stream()
                 .map(monitoreoService::convertirAListadoDTO)
                 .toList());

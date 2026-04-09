@@ -8,7 +8,11 @@ import java.util.List;
 @Service
 public class EmailService {
 
-    private JavaMailSender mailSender;
+    private final JavaMailSender mailSender;
+
+    public EmailService(JavaMailSender mailSender) {
+        this.mailSender = mailSender;
+    }
 
     public void enviarNotificacionFallo(List<String> destinatarios, String nombrePagina, String url, int codigoEstado) {
         SimpleMailMessage message = new SimpleMailMessage();

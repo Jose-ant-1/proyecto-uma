@@ -39,12 +39,21 @@ public class PlantillaMonitoreoService {
         return plantillaMonitoreoRepository.findById(id).orElse(null);
     }
 
+    @Transactional
     public PlantillaMonitoreoDTO save(PlantillaMonitoreoDTO dto) {
-        // DTO -> Entidad
+        // Convertimos a entidad (propietario vendrá null por el mapper)
         PlantillaMonitoreo entidad = mapper.toEntity(dto);
-        // Si necesitas asignar el propietario manualmente:
+
+        // obtener usuario autenticado
+        Usuario actual = usuarioService.getUsuarioAutenticado();
+        entidad.setPropietario(actual);
+
+        // Manejar los monitoreos
+        if (dto.getMonitoreos() != null) {
+            entidad.setMonitoreos(dto.getMonitoreos());
+        }
+
         PlantillaMonitoreo guardada = plantillaMonitoreoRepository.save(entidad);
-        // Entidad -> DTO
         return mapper.toDTO(guardada);
     }
 
@@ -58,7 +67,7 @@ public class PlantillaMonitoreoService {
 
         // Filtramos mediante Stream para asegurar la regla de propiedad total
         return todasLasPlantillas.stream()
-                .filter(plantilla -> isPropietarioTotal(plantilla, usuarioId))
+                .filter(plantilla -> this.isPropietarioTotal(plantilla, usuarioId))
                 .toList();
     }
 

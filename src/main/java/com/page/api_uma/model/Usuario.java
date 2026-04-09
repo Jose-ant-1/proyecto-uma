@@ -9,6 +9,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.io.Serial;
 import java.util.Collection;
 import java.util.HashSet;
 import java.util.List;
@@ -25,6 +26,9 @@ import java.util.Set;
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @Table(name = "usuario")
 public class Usuario  implements UserDetails {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -45,23 +49,23 @@ public class Usuario  implements UserDetails {
 
     @ManyToMany(mappedBy = "usuarios")
     @JsonIgnore
-    private transient Set<PlantillaUsuario> plantillaUsuarios = new HashSet<>();
+    private Set<PlantillaUsuario> plantillaUsuarios = new HashSet<>();
 
     @OneToMany(mappedBy = "propietario", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
-    private transient List<Monitoreo> monitoreosPropios;
+    private List<Monitoreo> monitoreosPropios;
 
     @ManyToMany(mappedBy = "invitados")
     @JsonIgnore
-    private transient Set<Monitoreo> monitoreosInvitado;
+    private Set<Monitoreo> monitoreosInvitado = new HashSet<>();
 
     @OneToMany(mappedBy = "propietario", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
-    private transient List<PlantillaMonitoreo> plantillasMonitoreoPropias;
+    private List<PlantillaMonitoreo> plantillasMonitoreoPropias;
 
     @OneToMany(mappedBy = "propietario", cascade = CascadeType.ALL, orphanRemoval = true)
     @JsonIgnore
-    private transient List<PlantillaUsuario> plantillasUsuarioPropias;
+    private List<PlantillaUsuario> plantillasUsuarioPropias;
 
 
     @Override

@@ -18,11 +18,17 @@ import java.util.List;
 @Slf4j
 public class MonitoreoTaskService {
 
-    private MonitoreoRepository repository;
-    
-    private RestTemplate restTemplate;
+    private final MonitoreoRepository repository;
 
-    private EmailService emailService;
+    private final RestTemplate restTemplate;
+
+    private final EmailService emailService;
+
+    public MonitoreoTaskService(MonitoreoRepository repository, RestTemplate restTemplate, EmailService emailService) {
+        this.repository = repository;
+        this.restTemplate = restTemplate;
+        this.emailService = emailService;
+    }
 
     @Scheduled(fixedRate = 30000)
     @Transactional

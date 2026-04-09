@@ -3,6 +3,8 @@ package com.page.api_uma.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.io.Serial;
+import java.io.Serializable;
 import java.util.Set;
 
 @Entity
@@ -14,7 +16,10 @@ import java.util.Set;
 @Builder
 @ToString
 @Table(name = "plantillaUsuario")
-public class PlantillaUsuario {
+public class PlantillaUsuario implements Serializable {
+
+    @Serial
+    private static final long serialVersionUID = 1L;
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
