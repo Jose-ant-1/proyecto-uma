@@ -71,6 +71,8 @@ public class SecurityConfig {
 
         return http.build();
     }
+    //
+    // Mira
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {

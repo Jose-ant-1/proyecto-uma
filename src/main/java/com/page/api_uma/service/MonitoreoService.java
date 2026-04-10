@@ -8,7 +8,6 @@ import com.page.api_uma.model.PaginaWeb;
 import com.page.api_uma.model.Usuario;
 import com.page.api_uma.repository.MonitoreoRepository;
 import com.page.api_uma.repository.PaginaWebRepository;
-import lombok.NonNull;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,9 +35,13 @@ public class MonitoreoService {
 
     @Transactional
     public MonitoreoDTODetalle crearMonitoreo(Usuario propietario, String url, String nombreMonitoreo, int minutos, int repeticiones) {
+        // Validación de lógica de negocio: evitar valores negativos
+        int minsValidados = Math.max(minutos, 1);
+        int repsValidadas = Math.max(repeticiones, 1);
+
         PaginaWeb pagina = paginaWebRepository.findByUrl(url)
                 .orElseGet(() -> {
-                    String dominio = extraerDominio(url);
+                    String dominio = this.extraerDominio(url);
                     PaginaWeb nueva = new PaginaWeb();
                     nueva.setUrl(url);
                     nueva.setNombre(dominio);
@@ -50,42 +53,29 @@ public class MonitoreoService {
         m.setNombre(nombreMonitoreo);
         m.setPaginaWeb(pagina);
         m.setPropietario(propietario);
-        m.setMinutos(minutos);
-        m.setRepeticiones(repeticiones);
+        m.setMinutos(minsValidados);
+        m.setRepeticiones(repsValidadas);
         m.setActivo(true);
 
-        return convertirADetalleDTO(monitoreoRepository.save(m));
+        return this.convertirADetalleDTO(monitoreoRepository.save(m));
     }
 
     @Transactional
     public MonitoreoDTODetalle actualizar(int id, Map<String, Object> payload, int usuarioId, String permiso) {
+        // 1. Validaciones básicas y búsqueda (Cláusulas de guarda)
+        if (payload == null) return null;
+
         Monitoreo m = monitoreoRepository.findById(id).orElse(null);
+        if (m == null) return null;
 
-        // Lógica de autorización: Dueño o ADMIN
-        boolean esAutorizado = m != null && (m.getPropietario().getId() == usuarioId || ADMIN.equals(permiso));
+        // 2. Combinamos el check de autorización (Soluciona el "Merge this if statement")
+        boolean esAutorizado = m.getPropietario().getId() == usuarioId || ADMIN.equals(permiso);
+        if (!esAutorizado) return null;
 
-        if (esAutorizado) {
-            if (payload.containsKey("nombre")) m.setNombre((String) payload.get("nombre"));
-            if (payload.containsKey("minutos")) m.setMinutos(((Number) payload.get("minutos")).intValue());
-            if (payload.containsKey("repeticiones")) m.setRepeticiones(((Number) payload.get("repeticiones")).intValue());
-            if (payload.containsKey("paginaUrl")) {
-                String nuevaUrl = (String) payload.get("paginaUrl");
-                // Solo hacemos el cambio si la URL es diferente a la que ya tiene
-                if (!nuevaUrl.equals(m.getPaginaWeb().getUrl())) {
-                    PaginaWeb pagina = paginaWebRepository.findByUrl(nuevaUrl)
-                            .orElseGet(() -> {
-                                PaginaWeb nueva = new PaginaWeb();
-                                nueva.setUrl(nuevaUrl);
-                                nueva.setNombre(this.extraerDominio(nuevaUrl));
-                                nueva.setNotaInfo("");
-                                return paginaWebRepository.save(nueva);
-                            });
-                    m.setPaginaWeb(pagina); // Desenlazamos la vieja y enlazamos la nueva
-                }
-            }
-            return this.convertirADetalleDTO(monitoreoRepository.save(m));
-        }
-        return null;
+        // 3. Delegamos la lógica compleja para bajar la Complejidad Cognitiva
+        this.aplicarCambiosPayload(m, payload);
+
+        return this.convertirADetalleDTO(monitoreoRepository.save(m));
     }
 
     @Transactional
@@ -122,7 +112,7 @@ public class MonitoreoService {
 
             // SI ES ADMIN, LE DEJAMOS PASAR SIEMPRE
             if (esDuenio || esInvitado || esAdmin) {
-                return convertirADetalleDTO(m);
+                return this.convertirADetalleDTO(m);
             }
         }
         return null; // Si llega aquí, el controlador devolverá 403
@@ -145,11 +135,17 @@ public class MonitoreoService {
     @Transactional
     public MonitoreoDTODetalle ejecutarChequeo(int id) {
         return monitoreoRepository.findById(id)
+                .filter(m -> m.getPaginaWeb() != null) // Evitamos el NPE si no hay página
                 .map(m -> {
-                    int nuevoEstado = paginaWebService.getRemoteStatus(m.getPaginaWeb().getUrl());
-                    m.setEstado(nuevoEstado);
-                    m.setFechaUltimaRevision(LocalDateTime.now());
-                    return convertirADetalleDTO(monitoreoRepository.save(m));
+                    try {
+                        int nuevoEstado = paginaWebService.getRemoteStatus(m.getPaginaWeb().getUrl());
+                        m.setEstado(nuevoEstado);
+                        m.setFechaUltimaRevision(LocalDateTime.now());
+                        return this.convertirADetalleDTO(monitoreoRepository.save(m));
+                    } catch (Exception e) {
+                        // Loguear error de red pero no romper el hilo
+                        return null;
+                    }
                 }).orElse(null);
     }
 
@@ -175,7 +171,7 @@ public class MonitoreoService {
                 .fechaUltimaRevision(m.getFechaUltimaRevision())
                 .activo(m.isActivo())
                 .paginaUrl(m.getPaginaWeb().getUrl())
-                .propietario(mapearUsuarioADTO(m.getPropietario()))
+                .propietario(this.mapearUsuarioADTO(m.getPropietario()))
                 .invitados(m.getInvitados().stream()
                         .map(this::mapearUsuarioADTO)
                         .collect(Collectors.toSet()))
@@ -183,23 +179,19 @@ public class MonitoreoService {
     }
 
     public List<MonitoreoListadoDTO> buscarAccesibles(int usuarioId, String termino) {
-        // Buscamos al usuario
         Usuario usuario = usuarioService.findById(usuarioId);
-
         if (usuario == null) return List.of();
 
-        // Unimos sus monitoreos propios y los que es invitado
-        Stream<Monitoreo> streamUnificado = Stream.concat(
-                usuario.getMonitoreosPropios().stream(),
-                usuario.getMonitoreosInvitado().stream()
-        );
+        // Protegemos contra colecciones nulas usando Optional o verificando nulos
+        Stream<Monitoreo> propios = (usuario.getMonitoreosPropios() != null)
+                ? usuario.getMonitoreosPropios().stream() : Stream.empty();
+        Stream<Monitoreo> invitados = (usuario.getMonitoreosInvitado() != null)
+                ? usuario.getMonitoreosInvitado().stream() : Stream.empty();
 
-        // Filtramos por el término y convertimos a DTO
-        return streamUnificado
+        return Stream.concat(propios, invitados)
                 .filter(m -> {
                     if (termino == null || termino.isBlank()) return true;
                     String t = termino.toLowerCase();
-                    // Buscamos en nombre del monitoreo OR en la URL de la página
                     return m.getNombre().toLowerCase().contains(t) ||
                             (m.getPaginaWeb() != null && m.getPaginaWeb().getUrl().toLowerCase().contains(t));
                 })
@@ -208,6 +200,37 @@ public class MonitoreoService {
                 .toList();
     }
 
+    @Transactional
+    public void invitacionEnMasa(int propietarioId, List<Integer> monitoreosIds, List<String> emails) {
+        // Si no hay IDs o no hay emails, no hay trabajo que hacer. Salida segura.
+        if (monitoreosIds == null || emails == null) return;
+
+        for (Integer monitoreoId : monitoreosIds) {
+            if (monitoreoId == null) continue; // Salto defensivo
+            for (String email : emails) {
+                if (email != null) this.toggleInvitado(monitoreoId, propietarioId, email);
+            }
+        }
+    }
+
+    @Transactional
+    public void quitarEnMasa(int propietarioId, List<Integer> monitoreosIds, List<String> emails) {
+        if (monitoreosIds == null || emails == null) return;
+
+        for (Integer monitoreoId : monitoreosIds) {
+            if (monitoreoId == null) continue;
+            for (String email : emails) {
+                if (email != null) this.eliminarInvitado(monitoreoId, propietarioId, email);
+            }
+        }
+    }
+
+    public List<MonitoreoListadoDTO> getMisMonitoreosOrdenados(Usuario propietario) {
+        return monitoreoRepository.findAllByPropietarioOrderByNombreAsc(propietario)
+                .stream()
+                .map(this::convertirAListadoDTO) // Usa tu método de conversión existente
+                .toList();
+    }
 
     private MonitoreoDTODetalle eliminarInvitado(int monitoreoId, int propietarioId, String emailInvitado) {
         Monitoreo m = monitoreoRepository.findById(monitoreoId).orElse(null);
@@ -243,33 +266,6 @@ public class MonitoreoService {
         return null;
     }
 
-    @Transactional
-    public void invitacionEnMasa(int propietarioId, List<Integer> monitoreosIds, List<String> emails) {
-        for (Integer monitoreoId : monitoreosIds) {
-            for (String email : emails) {
-                // Llamamos a tu lógica individual existente
-                this.toggleInvitado(monitoreoId, propietarioId, email);
-            }
-        }
-    }
-
-    @Transactional
-    public void quitarEnMasa(int propietarioId, @NonNull List<Integer> monitoreosIds, List<String> emails) {
-        for (Integer monitoreoId : monitoreosIds) {
-            for (String email : emails) {
-                // Llamamos a tu lógica de borrado existente
-                this.eliminarInvitado(monitoreoId, propietarioId, email);
-            }
-        }
-    }
-
-    public List<MonitoreoListadoDTO> getMisMonitoreosOrdenados(Usuario propietario) {
-        return monitoreoRepository.findAllByPropietarioOrderByNombreAsc(propietario)
-                .stream()
-                .map(this::convertirAListadoDTO) // Usa tu método de conversión existente
-                .toList();
-    }
-
     private UsuarioDTO mapearUsuarioADTO(Usuario u) {
         return UsuarioDTO.builder()
                 .id(u.getId())
@@ -289,6 +285,37 @@ public class MonitoreoService {
         }
     }
 
+    private void aplicarCambiosPayload(Monitoreo m, Map<String, Object> payload) {
+        if (payload.get("nombre") instanceof String nombre) {
+            m.setNombre(nombre);
+        }
 
+        if (payload.get("minutos") instanceof Number n) {
+            m.setMinutos(Math.max(n.intValue(), 1));
+        }
 
+        if (payload.get("repeticiones") instanceof Number n) {
+            m.setRepeticiones(Math.max(n.intValue(), 1));
+        }
+
+        if (payload.get("paginaUrl") instanceof String nuevaUrl) {
+            this.actualizarPaginaAsociada(m, nuevaUrl);
+        }
+    }
+
+    private void actualizarPaginaAsociada(Monitoreo m, String nuevaUrl) {
+        if (m.getPaginaWeb() != null && nuevaUrl.equals(m.getPaginaWeb().getUrl())) {
+            return;
+        }
+
+        PaginaWeb pagina = paginaWebRepository.findByUrl(nuevaUrl)
+                .orElseGet(() -> {
+                    PaginaWeb nueva = new PaginaWeb();
+                    nueva.setUrl(nuevaUrl);
+                    nueva.setNombre(this.extraerDominio(nuevaUrl));
+                    nueva.setNotaInfo("");
+                    return paginaWebRepository.save(nueva);
+                });
+        m.setPaginaWeb(pagina);
+    }
 }

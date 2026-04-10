@@ -27,8 +27,8 @@ public class PlantillaMonitoreoController {
     }
 
     @GetMapping
-    public List<PlantillaMonitoreo> findAll(Principal principal) {
-        return service.findByPropietario(principal.getName());
+    public ResponseEntity<List<PlantillaMonitoreo>> findAll(Principal principal) {
+        return ResponseEntity.ok(service.findByPropietario(principal.getName()));
     }
 
     @GetMapping("/{id}")
