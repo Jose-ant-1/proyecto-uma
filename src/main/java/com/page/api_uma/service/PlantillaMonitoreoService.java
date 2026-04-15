@@ -12,6 +12,7 @@ import com.page.api_uma.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashSet;
 import java.util.List;
 
 @Service
@@ -41,18 +42,14 @@ public class PlantillaMonitoreoService {
 
     @Transactional
     public PlantillaMonitoreoDTO save(PlantillaMonitoreoDTO dto) {
-        // Convertimos a entidad (propietario vendrá null por el mapper)
+        // 1. El mapper convierte el DTO a Entidad (incluyendo la colección de monitoreos si existe)
         PlantillaMonitoreo entidad = mapper.toEntity(dto);
 
-        // obtener usuario autenticado
+        // 2. Forzamos el propietario real desde el contexto de seguridad
         Usuario actual = usuarioService.getUsuarioAutenticado();
         entidad.setPropietario(actual);
 
-        // Manejar los monitoreos
-        if (dto.getMonitoreos() != null) {
-            entidad.setMonitoreos(dto.getMonitoreos());
-        }
-
+        // 3. Guardar y retornar
         PlantillaMonitoreo guardada = plantillaMonitoreoRepository.save(entidad);
         return mapper.toDTO(guardada);
     }
@@ -71,12 +68,6 @@ public class PlantillaMonitoreoService {
                 .toList();
     }
 
-    private boolean isPropietarioTotal(PlantillaMonitoreo plantilla, int usuarioId) {
-        // Todos los monitoreos de esta plantilla deben tener como propietario al usuarioId
-        return plantilla.getMonitoreos().stream()
-                .allMatch(m -> m.getPropietario().getId() == usuarioId);
-    }
-
     public List<PlantillaMonitoreo> findByPropietario(String email) {
         Usuario owner = java.util.Optional.ofNullable(usuarioRepository.findByEmail(email))
                 .orElseThrow(() -> new RuntimeException("Usuario no encontrado"));
@@ -86,24 +77,32 @@ public class PlantillaMonitoreoService {
 
     @Transactional
     public void aplicarPlantillaAUsuario(int plantillaId, String emailInvitado, int propietarioId) {
-        // Buscamos la plantilla
         PlantillaMonitoreo plantilla = plantillaMonitoreoRepository.findById(plantillaId)
                 .orElseThrow(() -> new ResourceNotFoundException("Plantilla no encontrada"));
 
-        // Buscamos al usuario que va a recibir los accesos
         Usuario invitado = usuarioService.buscarPorEmail(emailInvitado);
         if (invitado == null) throw new ResourceNotFoundException("Usuario a invitar no encontrado");
 
-        // Recorremos los monitoreos de la plantilla
         for (Monitoreo m : plantilla.getMonitoreos()) {
-            // Solo aplicamos si es el dueño del monitoreo
-            if (m.getPropietario().getId() == propietarioId) {
-                // Añadimos a la lista de invitados de este monitoreo
+            // Validamos que el monitoreo tenga propietario antes de comparar IDs
+            if (m.getPropietario() != null && m.getPropietario().getId() == propietarioId) {
+
+                // Si por alguna razón los invitados son null, lo inicializamos al vuelo
+                if (m.getInvitados() == null) {
+                    m.setInvitados(new HashSet<>());
+                }
+
                 m.getInvitados().add(invitado);
-                // Guardamos el cambio individual
                 monitoreoRepository.save(m);
             }
         }
+    }
+
+    private boolean isPropietarioTotal(PlantillaMonitoreo plantilla, int usuarioId) {
+        if (plantilla.getMonitoreos() == null) return true; // O false, según tu lógica de negocio
+
+        return plantilla.getMonitoreos().stream()
+                .allMatch(m -> m.getPropietario() != null && m.getPropietario().getId() == usuarioId);
     }
 
 

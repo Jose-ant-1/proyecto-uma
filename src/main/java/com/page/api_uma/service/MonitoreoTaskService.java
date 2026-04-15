@@ -48,6 +48,11 @@ public class MonitoreoTaskService {
     }
 
     private void realizarCheck(Monitoreo m) {
+
+        if (m.getPaginaWeb() == null || m.getPaginaWeb().getUrl() == null) {
+            log.error("El monitoreo '{}' (ID: {}) no tiene una URL válida configurada.", m.getNombre(), m.getId());
+            return; // Salimos de este check, pero el bucle sigue con el siguiente
+        }
         String urlOriginal = m.getPaginaWeb().getUrl();
 
         log.info("Iniciando revisión para: {} ({})", m.getNombre(), urlOriginal);
@@ -89,14 +94,21 @@ public class MonitoreoTaskService {
     }
 
     private void enviarNotificaciones(Monitoreo m, int status) {
-        List<String> destinatarios = new ArrayList<>();
 
-        // Dueño
+        if (m.getPropietario() == null || m.getPropietario().getEmail() == null) {
+            log.error("No se pudo enviar notificación para '{}': El propietario no tiene email.", m.getNombre());
+            return;
+        }
+
+        List<String> destinatarios = new ArrayList<>();
         destinatarios.add(m.getPropietario().getEmail());
 
         // Invitados (Gracias al @Transactional la lista está disponible)
-        m.getInvitados().forEach(inv -> destinatarios.add(inv.getEmail()));
-
+        if (m.getInvitados() != null) {
+            m.getInvitados().forEach(inv -> {
+                if (inv.getEmail() != null) destinatarios.add(inv.getEmail());
+            });
+        }
         // Llamada al servicio de Gmail
         emailService.enviarNotificacionFallo(
                 destinatarios,

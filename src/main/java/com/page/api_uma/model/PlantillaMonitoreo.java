@@ -5,6 +5,7 @@ import lombok.*;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.util.HashSet;
 import java.util.Set;
 
 @Entity
@@ -34,7 +35,7 @@ public class PlantillaMonitoreo implements Serializable {
             joinColumns = @JoinColumn(name = "id_plantillaMon"),
             inverseJoinColumns = @JoinColumn(name = "id_monitoreo")
     )
-    private Set<Monitoreo> monitoreos;
+    private Set<Monitoreo> monitoreos = new HashSet<>();
 
     // En PlantillaMonitoreo.java
     @ManyToOne(fetch = FetchType.LAZY)

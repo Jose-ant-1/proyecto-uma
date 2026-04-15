@@ -28,12 +28,36 @@ public class PaginaWebService {
         return paginaWebRepository.findById(id).orElse(null);
     }
 
-    public PaginaWeb save(PaginaWebDTO paginaWeb) {
-        PaginaWeb entidad = paginaWebMapper.toEntity(paginaWeb);
+    public PaginaWeb save(PaginaWebDTO paginaWebDTO) {
+        if (paginaWebDTO == null) {
+            throw new IllegalArgumentException("La página web no puede ser nula");
+        }
+
+        if (paginaWebDTO.getNombre() == null || paginaWebDTO.getNombre().isBlank()) {
+            throw new IllegalArgumentException("El nombre de la página es obligatorio");
+        }
+
+        if (paginaWebDTO.getUrl() == null || paginaWebDTO.getUrl().isBlank()) {
+            throw new IllegalArgumentException("La URL de la página es obligatoria");
+        }
+
+        if (!this.isValidUrl(paginaWebDTO.getUrl())) {
+            throw new IllegalArgumentException("El formato de la URL es inválido");
+        }
+
+        PaginaWeb entidad = paginaWebMapper.toEntity(paginaWebDTO);
+
+        if (entidad == null) {
+            throw new IllegalStateException("Error al convertir el DTO a entidad");
+        }
+
         return paginaWebRepository.save(entidad);
     }
 
     public void deleteById(Integer id) {
+        if (id == null) {
+            throw new IllegalArgumentException("El ID no puede ser nulo");
+        }
         paginaWebRepository.deleteById(id);
     }
 
@@ -60,10 +84,23 @@ public class PaginaWebService {
     }
 
     public List<PaginaWeb> buscarPaginas(String termino) {
-        if (termino == null || termino.isEmpty()) {
+        if (termino == null || termino.isBlank()) {
             return Collections.emptyList();
         }
-        return paginaWebRepository.buscarPorTermino(termino);
+
+        List<PaginaWeb> resultados = paginaWebRepository.buscarPorTermino(termino);
+
+        // Si el repo devuelve null, devolvemos una lista vacía para no romper la app
+        return (resultados != null) ? resultados : Collections.emptyList();
     }
 
+    private boolean isValidUrl(String url) {
+        try {
+            java.net.URI.create(url).toURL();
+            return url.contains("."); // Validación simple para asegurar un dominio
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    
 }

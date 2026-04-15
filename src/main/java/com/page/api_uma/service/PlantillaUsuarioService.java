@@ -7,6 +7,7 @@ import com.page.api_uma.model.Usuario;
 import com.page.api_uma.repository.PlantillaUsuarioRepository;
 import com.page.api_uma.repository.UsuarioRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Set;
@@ -20,8 +21,8 @@ public class PlantillaUsuarioService {
     private final PlantillaUsuarioMapper mapper;
 
 
-    public PlantillaUsuarioService(PlantillaUsuarioRepository plantillaInvitacionRepository, UsuarioRepository usuarioRepository, PlantillaUsuarioMapper mapper) {
-        this.plantillaUsuarioRepository = plantillaInvitacionRepository;
+    public PlantillaUsuarioService(PlantillaUsuarioRepository plantillaUsuarioRepository, UsuarioRepository usuarioRepository, PlantillaUsuarioMapper mapper) {
+        this.plantillaUsuarioRepository = plantillaUsuarioRepository;
         this.usuarioRepository = usuarioRepository;
         this.mapper = mapper;
     }
@@ -34,17 +35,20 @@ public class PlantillaUsuarioService {
         return plantillaUsuarioRepository.findById(id).orElse(null);
     }
 
+    @Transactional
     public PlantillaUsuarioDTO save(PlantillaUsuarioDTO dto, String emailPropietario) {
         PlantillaUsuario entidad = mapper.toEntity(dto);
 
-        // Asignamos el dueño real desde la base de datos por seguridad
-        Usuario owner = usuarioRepository.findByEmail(emailPropietario);
+        // CAMBIO: Añadimos validación con Optional (igual que en findByPropietario)
+        Usuario owner = java.util.Optional.ofNullable(usuarioRepository.findByEmail(emailPropietario))
+                .orElseThrow(() -> new RuntimeException("Propietario no encontrado: " + emailPropietario));
+
         entidad.setPropietario(owner);
 
         if (dto.getUsuarios() != null && !dto.getUsuarios().isEmpty()) {
             Set<Usuario> usuariosReal = dto.getUsuarios().stream()
                     .map(u -> usuarioRepository.findById(u.getId())
-                            .orElseThrow(() -> new RuntimeException("Usuario no encontrado: " + u.getId())))
+                            .orElseThrow(() -> new RuntimeException("Usuario invitado no encontrado: " + u.getId())))
                     .collect(Collectors.toSet());
 
             entidad.setUsuarios(usuariosReal);
@@ -60,7 +64,6 @@ public class PlantillaUsuarioService {
 
         return plantillaUsuarioRepository.findByPropietarioOrderByNombreAsc(owner);
     }
-
 
     // Verificar si soy el dueño antes de editar/borra
     public boolean esPropietario(Integer plantillaId, String email) {

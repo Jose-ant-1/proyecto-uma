@@ -2,6 +2,7 @@ package com.page.api_uma.service;
 
 import com.page.api_uma.model.Usuario;
 import com.page.api_uma.repository.UsuarioRepository;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -32,12 +33,26 @@ public class UsuarioService implements UserDetailsService {
         return usuarioRepository.findById(id).orElse(null);
     }
 
+    @Transactional
     public Usuario save(Usuario usuario) {
-        if (usuario.getContrasenia() != null &&
-                !usuario.getContrasenia().isBlank() &&
-                !usuario.getContrasenia().startsWith("$2a$")) {
-            usuario.setContrasenia(passwordEncoder.encode(usuario.getContrasenia()));
+        if (usuario == null) {
+            throw new IllegalArgumentException("El usuario no puede ser nulo.");
         }
+
+        // 1. Buscamos si el email ya existe
+        Usuario existente = usuarioRepository.findByEmail(usuario.getEmail());
+
+        // 2. Validación de email duplicado para tipos primitivos (int)
+        if (existente != null && (usuario.getId() == 0 || usuario.getId() != existente.getId())) {
+                throw new IllegalStateException("El email ya está registrado por otro usuario.");
+            }
+
+        // 3. Cifrado (Tu lógica original, sigue siendo robusta)
+        String pass = usuario.getContrasenia();
+        if (pass != null && !pass.isBlank() && !pass.startsWith("$2a$")) {
+            usuario.setContrasenia(passwordEncoder.encode(pass));
+        }
+
         return usuarioRepository.save(usuario);
     }
 
@@ -46,28 +61,24 @@ public class UsuarioService implements UserDetailsService {
         Usuario usuario = usuarioRepository.findById(id).orElse(null);
 
         if (usuario != null) {
-            // Limpiar relaciones donde el usuario es "invitado"
-
-            usuario.getMonitoreosInvitado().forEach(monitoreo ->
-                    monitoreo.getInvitados().remove(usuario)
-            );
-            usuario.getMonitoreosInvitado().clear();
+            // proteccion
+            if (usuario.getMonitoreosInvitado() != null) {
+                usuario.getMonitoreosInvitado().forEach(monitoreo -> {
+                    // Protección adicional por si la lista de invitados del monitoreo es nula
+                    if (monitoreo.getInvitados() != null) {
+                        monitoreo.getInvitados().remove(usuario);
+                    }
+                });
+                usuario.getMonitoreosInvitado().clear();
+            }
 
             // Limpiar tablas intermedias conflictivas vía Repositorio
-
             usuarioRepository.eliminarRelacionesDePlantillasDeSusMonitoreos(id);
             usuarioRepository.eliminarRelacionesEnPlantillasUsuario(id);
 
-            // Asegurar que los cambios se manden a la DB antes del delete final
             usuarioRepository.saveAndFlush(usuario);
-
             usuarioRepository.delete(usuario);
         }
-    }
-
-    @Transactional(readOnly = true)
-    public Usuario findByEmail(String email) {
-        return usuarioRepository.findByEmail(email);
     }
 
     public Usuario buscarPorEmail(String email) {
@@ -88,9 +99,14 @@ public class UsuarioService implements UserDetailsService {
         Usuario usuario = usuarioRepository.findByEmail(email);
         if (usuario == null) throw new UsernameNotFoundException("Usuario no encontrado con email: " + email);
 
+        // Si el permiso es nulo o vacío, asignamos uno genérico o una lista vacía
+        String rol = (usuario.getPermiso() != null && !usuario.getPermiso().isBlank())
+                ? usuario.getPermiso()
+                : "ROLE_USER"; // O el rol mínimo de tu App
+
         return User.withUsername(usuario.getEmail())
                 .password(usuario.getContrasenia())
-                .authorities(usuario.getPermiso())
+                .authorities(rol)
                 .build();
     }
 
@@ -101,8 +117,9 @@ public class UsuarioService implements UserDetailsService {
      // identifica al usuario logueado en la sesión actual.
 
     public Usuario getUsuarioAutenticado() {
-        String email = SecurityContextHolder.getContext().getAuthentication().getName();
-        return usuarioRepository.findByEmail(email);
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || !auth.isAuthenticated()) return null;
+        return usuarioRepository.findByEmail(auth.getName());
     }
 
 }
