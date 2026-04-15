@@ -66,7 +66,6 @@ class MonitoreoControllerTest {
         MonitoreoListadoDTO item = new MonitoreoListadoDTO();
         item.setNombre("Mi Web Monitorizada");
 
-        // Mockeamos el servicio para que devuelva una lista con un elemento
         when(monitoreoService.getMisMonitoreosOrdenados(any(Usuario.class)))
                 .thenReturn(List.of(item));
 
@@ -166,7 +165,7 @@ class MonitoreoControllerTest {
     @Test
     @DisplayName("POST /api/monitoreos - Bad Request por validación")
     void create_BadRequest() throws Exception {
-        // Enviar minutos < 1 provoca un 400 según tu lógica de Controller
+        
         String jsonInvalido = """
             {
                 "paginaUrl": "https://test.com",

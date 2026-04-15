@@ -111,7 +111,7 @@ class PaginaWebControllerTest {
                         .content(json))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.nombre").value("Google"));
-        // Nota: devuelve 'Google' porque el mock devuelve paginaPrueba sin cambios
+
     }
 
     @Test
@@ -135,16 +135,14 @@ class PaginaWebControllerTest {
     @Test
     @DisplayName("GET /api/paginas/buscar - Búsqueda por query")
     void buscar_Ok() throws Exception {
-        // 1. Preparamos el resultado esperado
+
         PaginaWeb resultado = new PaginaWeb();
         resultado.setId(2);
         resultado.setNombre("Resultado Buscado");
         resultado.setUrl("https://resultado.com");
 
-        // 2. Mockeamos el servicio (el controller usa .buscarPaginas(q))
         when(paginaService.buscarPaginas("google")).thenReturn(List.of(resultado));
 
-        // 3. Ejecutamos la petición con el parámetro ?q=google
         mockMvc.perform(get("/api/paginas/buscar")
                         .param("q", "google"))
                 .andExpect(status().isOk())

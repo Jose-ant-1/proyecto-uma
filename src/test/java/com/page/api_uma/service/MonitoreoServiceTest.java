@@ -23,7 +23,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
-@ExtendWith(MockitoExtension.class) // Para usar Mocks
+@ExtendWith(MockitoExtension.class)
 class MonitoreoServiceTest {
 
     @Mock
@@ -52,9 +52,6 @@ class MonitoreoServiceTest {
         paginaPrueba.setUrl("https://google.com");
     }
 
-    //##############################
-    //      TEST DE CREACION
-    //##############################
     @Test
     @DisplayName("Crear: Debe crear monitoreo con página existente")
     void crearMonitoreo_PaginaExiste_RetornaDTO() {
@@ -65,7 +62,7 @@ class MonitoreoServiceTest {
 
         assertNotNull(resultado);
         assertEquals("Monitor 1", resultado.getNombre());
-        verify(paginaWebRepository, never()).save(any()); // Verificamos que NO se creó página nueva
+        verify(paginaWebRepository, never()).save(any());
     }
 
     @Test
@@ -78,17 +75,13 @@ class MonitoreoServiceTest {
         MonitoreoDTODetalle resultado = monitoreoService.crearMonitoreo(usuarioPrueba, "https://nueva.com", "Nuevo", 10, 1);
 
         assertNotNull(resultado);
-        verify(paginaWebRepository).save(any(PaginaWeb.class)); // Verificamos que se llamó al save de la página
+        verify(paginaWebRepository).save(any(PaginaWeb.class));
     }
-
-    //##############################
-    //    TEST DE ACTUALIZACION
-    //##############################
 
     @Test
     @DisplayName("Actualizar: Dueño puede actualizar datos básicos")
     void actualizar_EsDuenio_ActualizaCampos() {
-        // Arrange
+
         Monitoreo m = new Monitoreo();
         m.setId(100);
         m.setPropietario(usuarioPrueba);
@@ -102,10 +95,8 @@ class MonitoreoServiceTest {
         when(monitoreoRepository.findById(100)).thenReturn(Optional.of(m));
         when(monitoreoRepository.save(any(Monitoreo.class))).thenReturn(m);
 
-        // Act
         MonitoreoDTODetalle resultado = monitoreoService.actualizar(100, payload, usuarioPrueba.getId(), "USER");
 
-        // Assert
         assertEquals("Nuevo Nombre", resultado.getNombre());
         assertEquals(15, resultado.getMinutos());
     }
@@ -114,7 +105,7 @@ class MonitoreoServiceTest {
     @DisplayName("Actualizar: ADMIN puede actualizar aunque no sea dueño")
     void actualizar_EsAdmin_PermiteActualizar() {
         Monitoreo m = new Monitoreo();
-        m.setPropietario(new Usuario()); // Otro usuario
+        m.setPropietario(new Usuario());
         m.getPropietario().setId(999);
         m.setPaginaWeb(paginaPrueba);
 
@@ -123,7 +114,6 @@ class MonitoreoServiceTest {
 
         Map<String, Object> payload = Map.of("nombre", "Editado por Admin");
 
-        // El ID de usuario que pide es 1 (no es el dueño 999), pero es ADMIN
         MonitoreoDTODetalle resultado = monitoreoService.actualizar(1, payload, 1, "ADMIN");
 
         assertNotNull(resultado);
@@ -133,52 +123,44 @@ class MonitoreoServiceTest {
     @DisplayName("Actualizar: Retorna null si no tiene permisos")
     void actualizar_SinPermiso_RetornaNull() {
         Monitoreo m = new Monitoreo();
-        m.setPropietario(usuarioPrueba); // Dueño es ID 1
+        m.setPropietario(usuarioPrueba);
 
         when(monitoreoRepository.findById(1)).thenReturn(Optional.of(m));
 
-        // Usuario ID 2 intenta actualizar y no es ADMIN
         MonitoreoDTODetalle resultado = monitoreoService.actualizar(1, Map.of(), 2, "USER");
 
         assertNull(resultado);
         verify(monitoreoRepository, never()).save(any());
     }
 
-    //##############################
-    //       TEST DE ELIMINAR
-    //##############################
-
     @Test
     @DisplayName("Eliminar: Dueño puede eliminar y limpia relaciones")
     void eliminar_EsDuenio_BorradoExitoso() {
-        // Arrange
+
         Monitoreo m = new Monitoreo();
         m.setId(1);
         m.setPropietario(usuarioPrueba);
-        m.getInvitados().add(new Usuario()); // Añadimos un invitado para ver si se limpia
+        m.getInvitados().add(new Usuario());
 
         when(monitoreoRepository.findById(1)).thenReturn(Optional.of(m));
 
-        // Act
         boolean resultado = monitoreoService.eliminar(1, usuarioPrueba.getId(), "USER");
 
-        // Assert
         assertTrue(resultado);
-        assertTrue(m.getInvitados().isEmpty()); // Verifica que se limpiaron invitados
-        verify(monitoreoRepository).eliminarRelacionesConPlantillas(1); // Verifica limpieza de plantillas
-        verify(monitoreoRepository).delete(m); // Verifica el borrado final
+        assertTrue(m.getInvitados().isEmpty());
+        verify(monitoreoRepository).eliminarRelacionesConPlantillas(1);
+        verify(monitoreoRepository).delete(m);
     }
 
     @Test
     @DisplayName("Eliminar: ADMIN puede eliminar cualquier monitoreo")
     void eliminar_EsAdmin_BorradoExitoso() {
         Monitoreo m = new Monitoreo();
-        m.setPropietario(new Usuario()); // El dueño es otro
+        m.setPropietario(new Usuario());
         m.getPropietario().setId(99);
 
         when(monitoreoRepository.findById(1)).thenReturn(Optional.of(m));
 
-        // Act: Intenta borrar el usuario 1 (no es dueño) pero con rol ADMIN
         boolean resultado = monitoreoService.eliminar(1, 1, "ADMIN");
 
         assertTrue(resultado);
@@ -188,11 +170,10 @@ class MonitoreoServiceTest {
     @Test
     @DisplayName("Eliminar: Retorna false si el monitoreo no existe o no tiene permiso")
     void eliminar_SinPermisoONoExiste_RetornaFalse() {
-        // Caso 1: No existe
+
         when(monitoreoRepository.findById(1)).thenReturn(Optional.empty());
         assertFalse(monitoreoService.eliminar(1, 1, "USER"));
 
-        // Caso 2: Existe pero el usuario no es dueño ni admin
         Monitoreo m = new Monitoreo();
         m.setPropietario(new Usuario());
         m.getPropietario().setId(50);
@@ -201,10 +182,6 @@ class MonitoreoServiceTest {
         assertFalse(monitoreoService.eliminar(2, 1, "USER"));
         verify(monitoreoRepository, never()).delete(any());
     }
-
-    //##############################
-    //       TEST DE DETALLE
-    //##############################
 
     @Test
     @DisplayName("Detalle: Dueño puede ver su monitoreo")
@@ -230,8 +207,8 @@ class MonitoreoServiceTest {
         invitado.setPermiso("USER");
 
         Monitoreo m = new Monitoreo();
-        m.setPropietario(usuarioPrueba); // Dueño es ID 1
-        m.getInvitados().add(invitado); // El ID 20 es invitado
+        m.setPropietario(usuarioPrueba);
+        m.getInvitados().add(invitado);
         m.setPaginaWeb(paginaPrueba);
 
         when(monitoreoRepository.findById(1)).thenReturn(Optional.of(m));
@@ -250,7 +227,7 @@ class MonitoreoServiceTest {
         admin.setPermiso("ADMIN");
 
         Monitoreo m = new Monitoreo();
-        m.setPropietario(usuarioPrueba); // Dueño ID 1
+        m.setPropietario(usuarioPrueba);
         m.setPaginaWeb(paginaPrueba);
 
         when(monitoreoRepository.findById(1)).thenReturn(Optional.of(m));
@@ -269,8 +246,7 @@ class MonitoreoServiceTest {
         ajeno.setPermiso("USER");
 
         Monitoreo m = new Monitoreo();
-        m.setPropietario(usuarioPrueba); // Dueño ID 1
-        // No está en la lista de invitados
+        m.setPropietario(usuarioPrueba);
 
         when(monitoreoRepository.findById(1)).thenReturn(Optional.of(m));
         when(usuarioService.findById(500)).thenReturn(ajeno);
@@ -280,14 +256,10 @@ class MonitoreoServiceTest {
         assertNull(resultado);
     }
 
-    //##############################
-    //       TEST DE findAll
-    //##############################
-
     @Test
     @DisplayName("FindAll: Debe retornar lista de todos los monitoreos (Admin)")
     void findAll_RetornaListaCompleta() {
-        // Arrange
+
         Monitoreo m1 = new Monitoreo();
         m1.setPropietario(usuarioPrueba);
         m1.setPaginaWeb(paginaPrueba);
@@ -298,33 +270,25 @@ class MonitoreoServiceTest {
 
         when(monitoreoRepository.findAll()).thenReturn(List.of(m1, m2));
 
-        // Act
         List<MonitoreoListadoDTO> resultado = monitoreoService.findAll();
 
-        // Assert
         assertNotNull(resultado);
         assertEquals(2, resultado.size());
         verify(monitoreoRepository, times(1)).findAll();
     }
 
-    //##################################################
-    //       TEST DE ObtenerPaginaPorMonitoreoId
-    //##################################################
-
     @Test
     @DisplayName("ObtenerPagina: Dueño puede obtener la página")
     void obtenerPagina_EsDuenio_RetornaPagina() {
-        // Arrange
+
         Monitoreo m = new Monitoreo();
-        m.setPropietario(usuarioPrueba); // ID 1
+        m.setPropietario(usuarioPrueba);
         m.setPaginaWeb(paginaPrueba);
 
         when(monitoreoRepository.findById(10)).thenReturn(Optional.of(m));
 
-        // Act
         PaginaWeb resultado = monitoreoService.obtenerPaginaPorMonitoreoId(10, 1);
 
-        // Assert
         assertNotNull(resultado);
         assertEquals(paginaPrueba.getUrl(), resultado.getUrl());
     }
@@ -332,68 +296,57 @@ class MonitoreoServiceTest {
     @Test
     @DisplayName("ObtenerPagina: Invitado puede obtener la página")
     void obtenerPagina_EsInvitado_RetornaPagina() {
-        // Arrange
+
         Usuario invitado = new Usuario();
         invitado.setId(20);
 
         Monitoreo m = new Monitoreo();
-        m.setPropietario(usuarioPrueba); // Dueño ID 1
+        m.setPropietario(usuarioPrueba);
         m.getInvitados().add(invitado);
         m.setPaginaWeb(paginaPrueba);
 
         when(monitoreoRepository.findById(10)).thenReturn(Optional.of(m));
 
-        // Act
         PaginaWeb resultado = monitoreoService.obtenerPaginaPorMonitoreoId(10, 20);
 
-        // Assert
         assertNotNull(resultado);
     }
 
     @Test
     @DisplayName("ObtenerPagina: Usuario sin relación recibe null")
     void obtenerPagina_SinPermiso_RetornaNull() {
-        // Arrange
+
         Monitoreo m = new Monitoreo();
-        m.setPropietario(usuarioPrueba); // Dueño ID 1
-        // No hay invitados
+        m.setPropietario(usuarioPrueba);
 
         when(monitoreoRepository.findById(10)).thenReturn(Optional.of(m));
 
-        // Act: El usuario ID 99 intenta acceder
         PaginaWeb resultado = monitoreoService.obtenerPaginaPorMonitoreoId(10, 99);
 
-        // Assert
         assertNull(resultado);
     }
-
-    //##################################################
-    //       TEST DE ejecutarChequeo
-    //##################################################
 
     @Test
     @DisplayName("Chequeo: Debe actualizar estado y fecha al ejecutar")
     void ejecutarChequeo_MonitoreoExiste_ActualizaEstadoYFecha() {
-        // Arrange
+
         Monitoreo m = new Monitoreo();
         m.setId(5);
-        m.setPaginaWeb(paginaPrueba); // URL: https://google.com
+        m.setPaginaWeb(paginaPrueba);
         m.setPropietario(usuarioPrueba);
 
         when(monitoreoRepository.findById(5)).thenReturn(Optional.of(m));
-        // Simulamos que la web responde un 200 OK
+
         when(paginaWebService.getRemoteStatus("https://google.com")).thenReturn(200);
-        // Simulamos el save devolviendo el mismo objeto
+
         when(monitoreoRepository.save(any(Monitoreo.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        // Act
         MonitoreoDTODetalle resultado = monitoreoService.ejecutarChequeo(5);
 
-        // Assert
         assertNotNull(resultado);
-        assertEquals(200, m.getEstado()); // Verificamos que el objeto m cambió
-        assertNotNull(m.getFechaUltimaRevision()); // Verificamos que se puso la fecha
-        verify(monitoreoRepository).save(m); // Verificamos que se persistió
+        assertEquals(200, m.getEstado());
+        assertNotNull(m.getFechaUltimaRevision());
+        verify(monitoreoRepository).save(m);
     }
 
     @Test
@@ -407,14 +360,10 @@ class MonitoreoServiceTest {
         verify(paginaWebService, never()).getRemoteStatus(anyString());
     }
 
-    //##################################################
-    //       TEST DE convertirAListadoDTO
-    //##################################################
-
     @Test
     @DisplayName("Mapeo: Convertir Monitoreo a ListadoDTO correctamente")
     void convertirAListadoDTO_MapeoCorrecto() {
-        // Arrange
+
         LocalDateTime ahora = LocalDateTime.now();
         Monitoreo m = new Monitoreo();
         m.setId(1);
@@ -425,10 +374,8 @@ class MonitoreoServiceTest {
         m.setActivo(true);
         m.setPaginaWeb(paginaPrueba);
 
-        // Act
         MonitoreoListadoDTO dto = monitoreoService.convertirAListadoDTO(m);
 
-        // Assert
         assertAll("Verificación de campos del DTO",
                 () -> assertEquals(m.getId(), dto.getId()),
                 () -> assertEquals("Test Monitor", dto.getNombre()),
@@ -440,14 +387,10 @@ class MonitoreoServiceTest {
         );
     }
 
-    //##############################
-    //     convertirADetalleDTO
-    //##############################
-
     @Test
     @DisplayName("Mapeo: Convertir Monitoreo a DetalleDTO con invitados")
     void convertirADetalleDTO_MapeoCompleto() {
-        // Arrange
+
         Usuario invitado = new Usuario();
         invitado.setId(2);
         invitado.setNombre("Invitado");
@@ -458,15 +401,13 @@ class MonitoreoServiceTest {
         m.setNombre("Monitor Detallado");
         m.setMinutos(10);
         m.setRepeticiones(5);
-        m.setPropietario(usuarioPrueba); // usuarioPrueba definido en el @BeforeEach
+        m.setPropietario(usuarioPrueba);
         m.setPaginaWeb(paginaPrueba);
         m.setInvitados(Set.of(invitado));
         m.setEstado(200);
 
-        // Act
         MonitoreoDTODetalle dto = monitoreoService.convertirADetalleDTO(m);
 
-        // Assert
         assertNotNull(dto);
         assertEquals(m.getNombre(), dto.getNombre());
         assertEquals(1, dto.getInvitados().size());
@@ -475,21 +416,15 @@ class MonitoreoServiceTest {
         assertEquals(paginaPrueba.getUrl(), dto.getPaginaUrl());
     }
 
-    //##############################
-    //      TEST DE buscarAccesible
-    //##############################
-
     @Test
     @DisplayName("Búsqueda: Debe retornar monitoreos propios e invitados que coincidan con el término")
     void buscarAccesibles_ConTermino_FiltraCorrectamente() {
-        // Arrange
-        // Monitoreo propio
+
         Monitoreo propio = new Monitoreo();
         propio.setNombre("Servidor Produccion");
         propio.setPaginaWeb(paginaPrueba);
-        propio.setPropietario(usuarioPrueba); // Este ya estaba bien
+        propio.setPropietario(usuarioPrueba);
 
-        // Monitoreo invitado
         Monitoreo invitado = new Monitoreo();
         invitado.setNombre("Web Marketing");
 
@@ -501,23 +436,19 @@ class MonitoreoServiceTest {
         otroUsuario.setId(99);
         invitado.setPropietario(otroUsuario);
 
-        // Configuramos al usuario con ambos tipos de monitoreos
         usuarioPrueba.setMonitoreosPropios(List.of(propio));
         usuarioPrueba.setMonitoreosInvitado(Set.of(invitado));
 
         when(usuarioService.findById(1)).thenReturn(usuarioPrueba);
 
-        // Buscar por nombre existente
         List<MonitoreoListadoDTO> resNombre = monitoreoService.buscarAccesibles(1, "Produccion");
         assertEquals(1, resNombre.size());
         assertEquals("Servidor Produccion", resNombre.getFirst().getNombre());
 
-        // Buscar por URL
         List<MonitoreoListadoDTO> resUrl = monitoreoService.buscarAccesibles(1, "marketing");
         assertEquals(1, resUrl.size());
         assertEquals("https://marketing.es", resUrl.getFirst().getPaginaUrl());
 
-        //  Término vacío debe traerlo todoo
         List<MonitoreoListadoDTO> resTodo = monitoreoService.buscarAccesibles(1, "");
         assertEquals(2, resTodo.size());
     }
@@ -532,18 +463,13 @@ class MonitoreoServiceTest {
         assertTrue(resultado.isEmpty());
     }
 
-    //##############################
-    //      TEST DE invitarEnMasa
-    //##############################
-
     @Test
     void invitacionEnMasa_ProcesaTodosLosElementos() {
-        // Arrange
+
         int propietarioId = 10;
         List<Integer> ids = List.of(1, 2);
         List<String> emails = List.of("invitado@test.com");
 
-        // 1. Mock de findById: Retorna un monitoreo válido
         when(monitoreoRepository.findById(anyInt())).thenAnswer(inv -> {
             Monitoreo m = new Monitoreo();
             m.setId((Integer) inv.getArgument(0));
@@ -552,7 +478,6 @@ class MonitoreoServiceTest {
             m.setPropietario(prop);
             m.setInvitados(new HashSet<>());
 
-            // Importante: PaginaWeb no puede ser null para convertirADetalleDTO
             PaginaWeb pw = new PaginaWeb();
             pw.setUrl("http://test.com");
             m.setPaginaWeb(pw);
@@ -560,36 +485,26 @@ class MonitoreoServiceTest {
             return Optional.of(m);
         });
 
-        // 2. Mock de buscarPorEmail: Retorna un usuario invitado
         Usuario invitado = new Usuario();
         invitado.setId(999);
         invitado.setEmail("invitado@test.com");
         when(usuarioService.buscarPorEmail(anyString())).thenReturn(invitado);
 
-        // 3. LA PIEZA QUE FALTABA: Mock de save
-        // i.getArguments()[0] devuelve el mismo objeto Monitoreo que se está intentando guardar
         when(monitoreoRepository.save(any(Monitoreo.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        // Act
         monitoreoService.invitacionEnMasa(propietarioId, ids, emails);
 
-        // Assert
         verify(monitoreoRepository, atLeastOnce()).save(any(Monitoreo.class));
     }
-
-    //##############################
-    //      TEST DE quitarEnMasa
-    //##############################
 
     @Test
     @DisplayName("Masivo: Quitar en masa procesa todas las eliminaciones")
     void quitarEnMasa_ProcesaTodasLasEliminaciones() {
-        // Arrange
+
         int propietarioId = 10;
         List<Integer> ids = List.of(1);
         List<String> emails = List.of("quitar1@test.com", "quitar2@test.com");
 
-        // 1. Creamos el objeto Monitoreo y su PaginaWeb (necesaria para el DTO)
         Monitoreo m = new Monitoreo();
         m.setId(1);
 
@@ -601,7 +516,6 @@ class MonitoreoServiceTest {
         propietario.setId(propietarioId);
         m.setPropietario(propietario);
 
-        // 2. Creamos los usuarios con IDs DISTINTOS para evitar "duplicate element" en el Set
         Usuario u1 = new Usuario();
         u1.setId(101);
         u1.setEmail("quitar1@test.com");
@@ -610,37 +524,26 @@ class MonitoreoServiceTest {
         u2.setId(102);
         u2.setEmail("quitar2@test.com");
 
-        // Inicializamos los invitados (usamos HashSet para que sea mutable)
         m.setInvitados(new HashSet<>(Set.of(u1, u2)));
 
-        // 3. Configuración de Mocks
         when(monitoreoRepository.findById(1)).thenReturn(Optional.of(m));
 
-        // IMPORTANTE: Usar buscarPorEmail que es el que llama el Service
         when(usuarioService.buscarPorEmail("quitar1@test.com")).thenReturn(u1);
         when(usuarioService.buscarPorEmail("quitar2@test.com")).thenReturn(u2);
 
-        // Mock del save para que devuelva el objeto y no null (evita NPE en convertirADetalleDTO)
         when(monitoreoRepository.save(any(Monitoreo.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        // Act
         monitoreoService.quitarEnMasa(propietarioId, ids, emails);
 
-        // Assert
-        // Se debe haber llamado al save 2 veces (una por cada email quitado)
         verify(monitoreoRepository, times(2)).save(m);
 
-        // Verificamos que la lógica de negocio se cumplió: la lista debe estar vacía
         assertTrue(m.getInvitados().isEmpty(), "La lista de invitados debería estar vacía tras quitar a todos");
     }
 
-    //##############################
-    //      TEST DE getMisMonitoreiosOrdenados
-    //##############################
     @Test
     @DisplayName("Ordenado: Debe retornar la lista de monitoreos del propietario")
     void getMisMonitoreosOrdenados_RetornaListaConvertida() {
-        // Arrange
+
         Monitoreo m1 = new Monitoreo();
         m1.setNombre("A - Monitor");
         m1.setPropietario(usuarioPrueba);
@@ -654,70 +557,56 @@ class MonitoreoServiceTest {
         when(monitoreoRepository.findAllByPropietarioOrderByNombreAsc(usuarioPrueba))
                 .thenReturn(List.of(m1, m2));
 
-        // Act
         List<MonitoreoListadoDTO> resultado = monitoreoService.getMisMonitoreosOrdenados(usuarioPrueba);
 
-        // Assert
         assertNotNull(resultado);
         assertEquals(2, resultado.size());
         assertEquals("A - Monitor", resultado.getFirst().getNombre());
         verify(monitoreoRepository).findAllByPropietarioOrderByNombreAsc(usuarioPrueba);
     }
 
-    //##################################################
-    //       TESTS DE ESCENARIOS DE BORDE (EDGE CASES)
-    //##################################################
-
     @Test
     @DisplayName("Borde: Crear con URL nula maneja la excepción y asigna nombre por defecto")
     void crearMonitoreo_UrlNula_AsignaNombrePorDefecto() {
-        // Arrange
-        // Al pasar null, String.replaceFirst lanzará un NullPointerException internamente,
-        // el cual será atrapado por el bloque try-catch de extraerDominio().
+
         when(paginaWebRepository.findByUrl(null)).thenReturn(Optional.empty());
 
-        // Usamos ArgumentCaptor para verificar exactamente qué se intentó guardar en la BBDD
         org.mockito.ArgumentCaptor<PaginaWeb> paginaCaptor = org.mockito.ArgumentCaptor.forClass(PaginaWeb.class);
         when(paginaWebRepository.save(paginaCaptor.capture())).thenAnswer(i -> i.getArguments()[0]);
         when(monitoreoRepository.save(any(Monitoreo.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        // Act
         MonitoreoDTODetalle resultado = monitoreoService.crearMonitoreo(usuarioPrueba, null, "Monitor Raro", 5, 3);
 
-        // Assert
         assertNotNull(resultado);
-        assertEquals("Nueva Página", paginaCaptor.getValue().getNombre()); // Verifica la protección del catch
-        assertNull(paginaCaptor.getValue().getUrl()); // La URL quedó null, pero el programa no se rompió
+        assertEquals("Nueva Página", paginaCaptor.getValue().getNombre());
+        assertNull(paginaCaptor.getValue().getUrl());
     }
 
     @Test
     @DisplayName("Borde: Actualizar URL desenlaza la anterior y crea/enlaza la nueva")
     void actualizar_CambioDeUrl_AsignaNuevaPaginaWeb() {
-        // Arrange
+
         Monitoreo m = new Monitoreo();
         m.setId(100);
         m.setPropietario(usuarioPrueba);
-        m.setPaginaWeb(paginaPrueba); // Inicialmente en https://google.com
+        m.setPaginaWeb(paginaPrueba);
 
         String nuevaUrl = "https://mi-nuevo-dominio.com";
         Map<String, Object> payload = Map.of("paginaUrl", nuevaUrl);
 
         when(monitoreoRepository.findById(100)).thenReturn(Optional.of(m));
-        // Simulamos que la nueva URL no existe en BBDD para forzar su creación
+
         when(paginaWebRepository.findByUrl(nuevaUrl)).thenReturn(Optional.empty());
 
         org.mockito.ArgumentCaptor<PaginaWeb> paginaCaptor = org.mockito.ArgumentCaptor.forClass(PaginaWeb.class);
         when(paginaWebRepository.save(paginaCaptor.capture())).thenAnswer(i -> i.getArguments()[0]);
         when(monitoreoRepository.save(any(Monitoreo.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        // Act
         MonitoreoDTODetalle resultado = monitoreoService.actualizar(100, payload, usuarioPrueba.getId(), "USER");
 
-        // Assert
         assertNotNull(resultado);
-        assertEquals(nuevaUrl, resultado.getPaginaUrl()); // El DTO tiene la nueva URL
+        assertEquals(nuevaUrl, resultado.getPaginaUrl());
 
-        // Verificamos que se creó la página y se extrajo bien el dominio
         PaginaWeb paginaGuardada = paginaCaptor.getValue();
         assertEquals(nuevaUrl, paginaGuardada.getUrl());
         assertEquals("mi-nuevo-dominio.com", paginaGuardada.getNombre());
@@ -726,8 +615,8 @@ class MonitoreoServiceTest {
     @Test
     @DisplayName("Borde: Un propietario no puede auto-invitarse a su propio monitoreo")
     void invitacionEnMasa_DuenioSeInvita_NoModificaInvitados() {
-        // Arrange
-        int propietarioId = usuarioPrueba.getId(); // ID 1
+
+        int propietarioId = usuarioPrueba.getId();
         String emailPropietario = "propietario@test.com";
         usuarioPrueba.setEmail(emailPropietario);
 
@@ -735,48 +624,36 @@ class MonitoreoServiceTest {
         m.setId(10);
         m.setPropietario(usuarioPrueba);
         m.setPaginaWeb(paginaPrueba);
-        m.setInvitados(new HashSet<>()); // Set vacío
+        m.setInvitados(new HashSet<>());
 
         when(monitoreoRepository.findById(10)).thenReturn(Optional.of(m));
 
-        // Simulamos que al buscar el email a invitar, retorna el mismo usuario dueño
         when(usuarioService.buscarPorEmail(emailPropietario)).thenReturn(usuarioPrueba);
 
-        // Act
-        // El dueño (ID 1) intenta enviar una invitación a su propio correo
         monitoreoService.invitacionEnMasa(propietarioId, List.of(10), List.of(emailPropietario));
 
-        // Assert
         assertTrue(m.getInvitados().isEmpty(), "La lista de invitados debe seguir vacía porque el dueño no se puede añadir.");
 
-        // Verificamos que NUNCA se llegó a llamar al save del repositorio, optimizando el rendimiento
         verify(monitoreoRepository, never()).save(any(Monitoreo.class));
     }
-
-    //##################################################
-    //   TESTS DE CASOS EXTREMOS Y RUTAS INFELICES
-    //##################################################
 
     @Test
     @DisplayName("Resiliencia: Actualizar con tipos de datos incorrectos no cambia el valor")
     void actualizar_PayloadMalformado_NoCambiaElValor() {
-        // Arrange
+
         Monitoreo m = new Monitoreo();
         m.setId(1);
         m.setPropietario(usuarioPrueba);
-        m.setPaginaWeb(paginaPrueba); // <--- ESTO ES LO QUE FALTABA
+        m.setPaginaWeb(paginaPrueba);
         m.setMinutos(30);
 
         when(monitoreoRepository.findById(1)).thenReturn(Optional.of(m));
         when(monitoreoRepository.save(any(Monitoreo.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        // Enviamos un String basura
         Map<String, Object> payloadMalformado = Map.of("minutos", "quince");
 
-        // Act
         MonitoreoDTODetalle resultado = monitoreoService.actualizar(1, payloadMalformado, usuarioPrueba.getId(), "USER");
 
-        // Assert
         assertNotNull(resultado);
         assertEquals(30, resultado.getMinutos());
     }
@@ -784,38 +661,32 @@ class MonitoreoServiceTest {
     @Test
     @DisplayName("Resiliencia: Fallo de red en ejecutarChequeo no rompe el sistema")
     void ejecutarChequeo_FalloServicioRed_ManejaErrorYDevuelveNull() {
-        // Arrange
+
         Monitoreo m = new Monitoreo();
         m.setId(5);
         m.setPaginaWeb(paginaPrueba);
 
         when(monitoreoRepository.findById(5)).thenReturn(Optional.of(m));
 
-        // Simulamos que el servicio de red lanza una excepción
         when(paginaWebService.getRemoteStatus(anyString()))
                 .thenThrow(new RuntimeException("Timeout de red"));
 
-        // Act: Ahora NO usamos assertThrows porque el servicio es robusto
         MonitoreoDTODetalle resultado = monitoreoService.ejecutarChequeo(5);
 
-        // Assert: Verificamos que el servicio capturó el error y devolvió null
         assertNull(resultado, "Si la red falla, el servicio debe devolver null en lugar de lanzar una excepción");
 
-        // Opcional: Verificar que nunca se intentó guardar en el repositorio tras el fallo
         verify(monitoreoRepository, never()).save(any());
     }
 
     @Test
     @DisplayName("Borde: Crear monitoreo no valida valores negativos")
     void crearMonitoreo_ValoresNegativos_SeNormalizanAuno() {
-        // Arrange
+
         when(paginaWebRepository.findByUrl(anyString())).thenReturn(Optional.of(paginaPrueba));
         when(monitoreoRepository.save(any(Monitoreo.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        // Act: Pasamos -10 minutos y -5 repeticiones
         MonitoreoDTODetalle resultado = monitoreoService.crearMonitoreo(usuarioPrueba, "https://google.com", "Test Negativo", -10, -5);
 
-        // Assert: Ahora verificamos que el servicio PROTEGE los datos
         assertNotNull(resultado);
         assertEquals(1, resultado.getMinutos(), "Los minutos negativos deben convertirse en 1");
         assertEquals(1, resultado.getRepeticiones(), "Las repeticiones negativas deben convertirse en 1");
@@ -830,16 +701,13 @@ class MonitoreoServiceTest {
         m.setPropietario(usuarioPrueba);
         m.setPaginaWeb(paginaPrueba);
 
-        // Forzamos una inconsistencia de datos: el usuario está en ambas listas
         usuarioPrueba.setMonitoreosPropios(List.of(m));
         usuarioPrueba.setMonitoreosInvitado(Set.of(m));
 
         when(usuarioService.findById(1)).thenReturn(usuarioPrueba);
 
-        // Act
         List<MonitoreoListadoDTO> resultado = monitoreoService.buscarAccesibles(1, "");
 
-        // Assert: El .distinct() del Service debería agruparlos (asumiendo que equals() y hashCode() están bien en el DTO)
         assertEquals(1, resultado.size(), "Debería retornar 1 solo elemento gracias al distinct()");
         assertEquals("Monitor Inconsistente", resultado.getFirst().getNombre());
     }
@@ -847,9 +715,6 @@ class MonitoreoServiceTest {
     @Test
     @DisplayName("Resiliencia: Operaciones en masa con listas nulas no deben romper el flujo")
     void operacionesEnMasa_ListasNulas_NoLanzaExcepcion() {
-        // Act & Assert
-        // En lugar de esperar que explote (assertThrows),
-        // verificamos que NO explote (assertDoesNotThrow)
 
         assertDoesNotThrow(() -> {
             monitoreoService.quitarEnMasa(1, null, List.of("test@test.com"));
@@ -867,7 +732,7 @@ class MonitoreoServiceTest {
     @Test
     @DisplayName("Borde: buscarAccesibles con listas de monitoreo nulas no debe lanzar NPE")
     void buscarAccesibles_ListasNulas_ManejaSeguro() {
-        // Escenario: El objeto Usuario tiene colecciones null
+
         Usuario usuarioIncompleto = new Usuario();
         usuarioIncompleto.setId(1);
         usuarioIncompleto.setMonitoreosPropios(null);
@@ -875,10 +740,8 @@ class MonitoreoServiceTest {
 
         when(usuarioService.findById(1)).thenReturn(usuarioIncompleto);
 
-        // ACT: Ejecutamos el método
         List<MonitoreoListadoDTO> resultado = monitoreoService.buscarAccesibles(1, "test");
 
-        // ASSERT: Ya no esperamos excepción, sino una lista vacía y que no haya explotado
         assertNotNull(resultado);
         assertTrue(resultado.isEmpty(), "Debería retornar una lista vacía en lugar de lanzar NPE");
     }
@@ -887,7 +750,7 @@ class MonitoreoServiceTest {
     @DisplayName("Seguridad: obtenerDetalle cuando el usuario no existe en la DB")
     void obtenerDetalle_UsuarioNoEncontrado_RetornaNull() {
         when(monitoreoRepository.findById(1)).thenReturn(Optional.of(new Monitoreo()));
-        // El repositorio devuelve el monitoreo, pero el usuario que consulta ya no existe
+
         when(usuarioService.findById(888)).thenReturn(null);
 
         MonitoreoDTODetalle resultado = monitoreoService.obtenerDetalle(1, 888);
@@ -898,7 +761,7 @@ class MonitoreoServiceTest {
     @Test
     @DisplayName("Borde: extraerDominio maneja entradas malformadas sin romper la creación")
     void crearMonitoreo_UrlMalformada_UsaNombrePorDefecto() {
-        // Una URL que no es URL (solo espacios o símbolos)
+
         String urlBasura = "###//invalid-url";
 
         when(paginaWebRepository.findByUrl(urlBasura)).thenReturn(Optional.empty());
@@ -908,8 +771,7 @@ class MonitoreoServiceTest {
         MonitoreoDTODetalle resultado = monitoreoService.crearMonitoreo(usuarioPrueba, urlBasura, "Test", 5, 1);
 
         assertNotNull(resultado);
-        // Verificamos que el catch funcionó (aunque técnicamente extraerDominio
-        // solo falla si es null, este test asegura estabilidad ante cambios)
+
         assertEquals("Test", resultado.getNombre());
     }
 
@@ -919,7 +781,7 @@ class MonitoreoServiceTest {
         Monitoreo mIncompleto = new Monitoreo();
         mIncompleto.setId(50);
         mIncompleto.setPropietario(usuarioPrueba);
-        mIncompleto.setPaginaWeb(null); // Caso de dato corrupto o incompleto en DB
+        mIncompleto.setPaginaWeb(null);
 
         when(monitoreoRepository.findById(50)).thenReturn(Optional.of(mIncompleto));
         when(paginaWebRepository.findByUrl(anyString())).thenReturn(Optional.of(paginaPrueba));
@@ -927,7 +789,6 @@ class MonitoreoServiceTest {
 
         Map<String, Object> payload = Map.of("paginaUrl", "https://google.com");
 
-        // Si el service hace m.getPaginaWeb().getUrl() sin verificar null, aquí lanzará NPE
         assertDoesNotThrow(() -> {
             monitoreoService.actualizar(50, payload, usuarioPrueba.getId(), "USER");
         });
@@ -936,13 +797,12 @@ class MonitoreoServiceTest {
     @Test
     @DisplayName("Borde: Actualizar con tipos numéricos mixtos (Double/Float)")
     void actualizar_TiposNumericosDistintos_NoDebeRomper() {
-        // Arrange
+
         Monitoreo m = new Monitoreo();
         m.setId(1);
         m.setPropietario(usuarioPrueba);
         m.setPaginaWeb(paginaPrueba);
 
-        // Simulamos un payload que viene de un JSON donde los números pueden ser Double
         Map<String, Object> payload = Map.of(
                 "minutos", 15.0,
                 "repeticiones", 5.5
@@ -951,7 +811,6 @@ class MonitoreoServiceTest {
         when(monitoreoRepository.findById(1)).thenReturn(Optional.of(m));
         when(monitoreoRepository.save(any(Monitoreo.class))).thenReturn(m);
 
-        // Act & Assert
         assertDoesNotThrow(() -> {
             MonitoreoDTODetalle res = monitoreoService.actualizar(1, payload, 1, "USER");
             assertEquals(15, res.getMinutos());
@@ -967,7 +826,6 @@ class MonitoreoServiceTest {
 
         when(monitoreoRepository.findById(1)).thenReturn(Optional.of(m));
 
-        // Si el Service hace ((Number) null).intValue(), explotará.
         Map<String, Object> payload = new HashMap<>();
         payload.put("minutos", null);
 
@@ -979,60 +837,50 @@ class MonitoreoServiceTest {
     @Test
     @DisplayName("Robustez: ejecutarChequeo gestiona Monitoreos sin PaginaWeb de forma segura")
     void ejecutarChequeo_SinPaginaWeb_ManejoSeguro() {
-        // Arrange: Escenario de base de datos inconsistente
+
         Monitoreo m = new Monitoreo();
         m.setId(5);
         m.setPaginaWeb(null);
 
         when(monitoreoRepository.findById(5)).thenReturn(Optional.of(m));
 
-        // Act: Ejecutamos el método.
-        // Gracias al .filter() que añadimos, ya no lanzará NullPointerException.
         MonitoreoDTODetalle resultado = monitoreoService.ejecutarChequeo(5);
 
-        // Assert: Demostramos la robustez
         assertNull(resultado, "El servicio debe retornar null de forma segura si hay inconsistencia de datos");
 
-        // Verificación extra: El servicio de red nunca debió ser llamado
         verifyNoInteractions(paginaWebService);
     }
 
     @Test
     @DisplayName("Borde: extraerDominio con URL nula usa nombre por defecto")
     void crearMonitoreo_UrlVacia_UsaNombrePorDefecto() {
-        // 1. Mocks (usando nullable para permitir el envío de null)
+
         when(paginaWebRepository.findByUrl(nullable(String.class))).thenReturn(Optional.empty());
         when(paginaWebRepository.save(any(PaginaWeb.class))).thenAnswer(i -> i.getArguments()[0]);
         when(monitoreoRepository.save(any(Monitoreo.class))).thenAnswer(i -> i.getArguments()[0]);
 
-        // 2. Ejecución (enviamos null en URL y en nombre de monitoreo)
         MonitoreoDTODetalle resultado = monitoreoService.crearMonitoreo(usuarioPrueba, null, null, 5, 1);
 
-        // 3. Verificaciones
         assertNotNull(resultado);
 
-        // Para arreglar este test específico sin cambiar el Service, prueba esto:
-        assertNull(resultado.getNombre()); // El monitoreo es null porque pasamos null
+        assertNull(resultado.getNombre());
     }
 
     @Test
     @DisplayName("Masivo: invitacionEnMasa con IDs que no existen")
     void invitacionEnMasa_IdInexistente_NoDebeLanzarExcepcion() {
-        // Arrange: Preparamos un monitoreo con un propietario para evitar el NPE
+
         Usuario prop = new Usuario();
-        prop.setId(1); // El ID del propietario que pasaremos al método
+        prop.setId(1);
 
         Monitoreo m1 = new Monitoreo();
-        m1.setPropietario(prop); // <--- ESTO ES LO QUE FALTABA
-        m1.setInvitados(new HashSet<>()); // Evita NPE si intenta añadir al set
+        m1.setPropietario(prop);
+        m1.setInvitados(new HashSet<>());
 
-        // Mocking: ID 1 existe y es válido, ID 99 no existe (Optional.empty)
         when(monitoreoRepository.findById(1)).thenReturn(Optional.of(m1));
         when(monitoreoRepository.findById(99)).thenReturn(Optional.empty());
 
-        // Act & Assert
         assertDoesNotThrow(() -> {
-            // Usamos el ID de propietario 1 que configuramos arriba
             monitoreoService.invitacionEnMasa(1, List.of(1, 99), List.of("test@test.com"));
         }, "El bucle debe continuar aunque un monitoreoId sea inválido o falte");
 

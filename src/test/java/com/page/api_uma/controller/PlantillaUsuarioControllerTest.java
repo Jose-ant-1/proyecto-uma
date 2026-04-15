@@ -46,7 +46,6 @@ class PlantillaUsuarioControllerTest {
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
 
-        // Mock del Principal (quien hace la petición)
         mockPrincipal = mock(Principal.class);
         when(mockPrincipal.getName()).thenReturn("usuario@test.com");
 
@@ -111,10 +110,9 @@ class PlantillaUsuarioControllerTest {
     @Test
     @DisplayName("PUT /api/plantillaUsuario/{id} - Actualización exitosa")
     void update_Ok() throws Exception {
-        // 1. Mockeamos que SÍ es el propietario
+
         when(service.esPropietario(eq(1), anyString())).thenReturn(true);
 
-        // 2. Mockeamos el guardado (el service recibe el DTO y el email del principal)
         when(service.save(any(PlantillaUsuarioDTO.class), anyString())).thenReturn(dtoPrueba);
 
         String json = """
