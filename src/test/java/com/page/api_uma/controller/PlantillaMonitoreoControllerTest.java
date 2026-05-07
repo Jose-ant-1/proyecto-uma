@@ -63,7 +63,6 @@ class PlantillaMonitoreoControllerTest {
     @Test
     @DisplayName("GET /api/plantillaMonitoreo - Buscar por Principal")
     void findAll_Ok() throws Exception {
-        // Mockeamos el Principal que inyecta Spring
         Principal mockPrincipal = mock(Principal.class);
         when(mockPrincipal.getName()).thenReturn("test@test.com");
         when(plantillaService.findByPropietario("test@test.com")).thenReturn(List.of(plantillaPrueba));

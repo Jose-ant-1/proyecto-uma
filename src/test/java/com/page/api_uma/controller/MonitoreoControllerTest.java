@@ -81,7 +81,6 @@ class MonitoreoControllerTest {
         MonitoreoListadoDTO resultado = new MonitoreoListadoDTO();
         resultado.setNombre("Resultado de búsqueda");
 
-        // Mockeamos el servicio de búsqueda accesible
         when(monitoreoService.buscarAccesibles(anyInt(), eq("test")))
                 .thenReturn(List.of(resultado));
 
@@ -143,7 +142,6 @@ class MonitoreoControllerTest {
     @Test
     @DisplayName("PUT /api/monitoreos/invitar - Éxito")
     void invitar_Ok() throws Exception {
-        // En el controller usas @RequestBody List<Integer> y @RequestParam List<String>
         String jsonIds = "[1, 2]";
 
         mockMvc.perform(put("/api/monitoreos/invitar")

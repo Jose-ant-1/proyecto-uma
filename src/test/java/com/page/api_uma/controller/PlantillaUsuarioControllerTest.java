@@ -123,7 +123,7 @@ class PlantillaUsuarioControllerTest {
         """;
 
         mockMvc.perform(put("/api/plantillaUsuario/1")
-                        .principal(mockPrincipal) // El mockPrincipal que ya tenemos en el setUp
+                        .principal(mockPrincipal) // El del setup
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
                 .andExpect(status().isOk())
@@ -134,7 +134,6 @@ class PlantillaUsuarioControllerTest {
     @Test
     @DisplayName("PUT /api/plantillaUsuario/{id} - Prohibido (No es el dueño)")
     void update_Forbidden() throws Exception {
-        // 1. Mockeamos que NO es el propietario
         when(service.esPropietario(eq(1), anyString())).thenReturn(false);
 
         String json = "{\"nombre\": \"Intento de hackeo\"}";
@@ -143,7 +142,7 @@ class PlantillaUsuarioControllerTest {
                         .principal(mockPrincipal)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
-                .andExpect(status().isForbidden()); // Esperamos un 403
+                .andExpect(status().isForbidden());
     }
 
     @Test

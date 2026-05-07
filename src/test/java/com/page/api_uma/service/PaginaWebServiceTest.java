@@ -315,8 +315,7 @@ class PaginaWebServiceTest {
     @Test
     @DisplayName("getRemoteStatus: Debería retornar 500 si hay un timeout de conexión")
     void getRemoteStatus_Timeout_DeberiaRetornar500() {
-        // Nota: Este test es difícil de forzar sin mockear la red,
-        // pero puedes usar una IP no enrutable
+
         int status = paginaWebService.getRemoteStatus("http://10.255.255.1");
         assertEquals(500, status);
     }
@@ -324,7 +323,7 @@ class PaginaWebServiceTest {
     @Test
     @DisplayName("save: Debería lanzar Exception si la URL es nula o vacía")
     void save_UrlInvalida_DeberiaLanzarException() {
-        paginaDTOEjemplo.setUrl(""); // URL vacía
+        paginaDTOEjemplo.setUrl("");
 
         assertThrows(IllegalArgumentException.class, () -> {
             paginaWebService.save(paginaDTOEjemplo);
@@ -345,7 +344,7 @@ class PaginaWebServiceTest {
     @Test
     @DisplayName("buscarPaginas: Debería retornar lista vacía si el término solo contiene espacios")
     void buscarPaginas_TerminoConEspacios_DeberiaRetornarListaVacia() {
-        // Simulamos que el usuario envía espacios
+        // Usuario envía espacios
         List<PaginaWeb> resultado = paginaWebService.buscarPaginas("   ");
 
         assertTrue(resultado.isEmpty(), "Debería tratar strings de espacios como vacíos");
@@ -357,8 +356,6 @@ class PaginaWebServiceTest {
     void save_UrlFormatoInvalido_DeberiaLanzarException() {
         paginaDTOEjemplo.setUrl("esto-no-es-una-url");
 
-        // Si decides implementar una validación por Regex en el futuro,
-        // este test te servirá para asegurar que no se guarden datos basura.
         assertThrows(IllegalArgumentException.class, () -> {
             paginaWebService.save(paginaDTOEjemplo);
         });
@@ -379,7 +376,7 @@ class PaginaWebServiceTest {
     @Test
     @DisplayName("getRemoteStatus: Debería retornar 500 ante una URL con sintaxis ilegal")
     void getRemoteStatus_SintaxisIlegal_DeberiaRetornar500() {
-        // Caracteres que URI.create() no puede procesar sin codificar
+
         int status = paginaWebService.getRemoteStatus("https://google.com/search?q=un espacio");
 
         assertEquals(500, status);

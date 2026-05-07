@@ -111,11 +111,11 @@ class PlantUsuarioServiceTest {
         invitadoDTO.setId(20);
         dto.setUsuarios(new HashSet<>(Set.of(invitadoDTO)));
 
-        // Configuración de Mocks
+        // Configuración
         when(mapper.toEntity(dto)).thenReturn(plantillaEjemplo);
         when(usuarioRepository.findByEmail(emailOwner)).thenReturn(usuarioEjemplo);
 
-        // Simulamos la búsqueda del invitado en la DB (el Stream del servicio)
+        // Simulamos la búsqueda del invitado
         when(usuarioRepository.findById(20)).thenReturn(Optional.of(invitadoDTO));
 
         when(plantillaUsuarioRepository.save(any(PlantillaUsuario.class))).thenReturn(plantillaEjemplo);
@@ -230,7 +230,7 @@ class PlantUsuarioServiceTest {
         String emailOwner = "propietario@test.com";
         PlantillaUsuarioDTO dto = new PlantillaUsuarioDTO();
         dto.setNombre("Plantilla Privada");
-        dto.setUsuarios(null); // Caso nulo
+        dto.setUsuarios(null);
 
         when(mapper.toEntity(dto)).thenReturn(plantillaEjemplo);
         when(usuarioRepository.findByEmail(emailOwner)).thenReturn(usuarioEjemplo);
@@ -254,7 +254,7 @@ class PlantUsuarioServiceTest {
         invitado.setId(55);
 
         PlantillaUsuarioDTO dto = new PlantillaUsuarioDTO();
-        // Añadimos el mismo "usuario" o ID dos veces (simulando entrada malformada)
+        // Añadimos el mismo "usuario" o ID dos veces
         dto.setUsuarios(new HashSet<>(List.of(invitado, invitado)));
 
         when(mapper.toEntity(dto)).thenReturn(plantillaEjemplo);
@@ -307,7 +307,7 @@ class PlantUsuarioServiceTest {
         dto.setId(100);
         dto.setNombre("Nombre Editado");
 
-        when(mapper.toEntity(dto)).thenReturn(plantillaEjemplo); // plantillaEjemplo es del usuario 1 (Admin)
+        when(mapper.toEntity(dto)).thenReturn(plantillaEjemplo); // Es del usuario 1 (Admin)
         when(usuarioRepository.findByEmail(emailAtacante)).thenReturn(usuarioAtacante);
         when(plantillaUsuarioRepository.save(any())).thenReturn(plantillaEjemplo);
 
@@ -342,7 +342,7 @@ class PlantUsuarioServiceTest {
 
         String emailOwner = "propietario@test.com";
         PlantillaUsuarioDTO dto = new PlantillaUsuarioDTO();
-        dto.setUsuarios(new HashSet<>()); // Lista explícitamente vacía
+        dto.setUsuarios(new HashSet<>());
 
         when(mapper.toEntity(dto)).thenReturn(plantillaEjemplo);
         when(usuarioRepository.findByEmail(emailOwner)).thenReturn(usuarioEjemplo);
