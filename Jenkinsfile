@@ -42,29 +42,16 @@ pipeline {
             }
         }
 
-        stage('Prepare Network & DB') {
-            steps {
-                script {
-                    sh "docker network create jenkins-sonar-net || true"
-                    sh """
-                    if [ ! "\$(docker ps -q -f name=db-api)" ]; then
-                        if [ "\$(docker ps -aq -f status=exited -f name=db-api)" ]; then
-                            docker rm db-api
-                        fi
-                        docker run -d --name db-api \
-                        --network jenkins-sonar-net \
-                        -e MYSQL_ROOT_PASSWORD=root \
-                        -e MYSQL_DATABASE=${DB_NAME} \
-                        -e MYSQL_USER=${DB_USER} \
-                        -e MYSQL_PASSWORD=${DB_PASS} \
-                        mysql:8.0
-                        echo "Esperando a que la BD inicie..."
-                        sleep 20
-                    fi
-                    """
-                }
-            }
+stage('Prepare Network & DB') {
+    steps {
+        script {
+            // Crea la red solo si no existe
+            sh "docker network create jenkins-sonar-net || true"
+            // Conecta el contenedor de la base de datos a la red del pipeline
+            sh "docker network connect jenkins-sonar-net db-api || true"
         }
+    }
+}
 
         stage('Build Docker Image') {
             steps {
