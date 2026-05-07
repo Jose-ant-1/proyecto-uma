@@ -180,4 +180,37 @@ class MonitoreoControllerTest {
                         .content(jsonInvalido))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    @DisplayName("GET /api/monitoreos/{id} - Forbidden si el DTO es null")
+    void getById_Forbidden() throws Exception {
+        when(monitoreoService.obtenerDetalle(anyInt(), anyInt())).thenReturn(null);
+
+        mockMvc.perform(get("/api/monitoreos/1"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("PUT /api/monitoreos/{id} - Actualización exitosa")
+    void update_Ok() throws Exception {
+
+        when(monitoreoService.actualizar(eq(1), anyMap(), anyInt(), anyString()))
+                .thenReturn(new MonitoreoDTODetalle());
+
+        mockMvc.perform(put("/api/monitoreos/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"nombre\":\"Nuevo Nombre\"}"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    @DisplayName("DELETE /api/monitoreos/invitar - Éxito")
+    void quitarInvitados_Ok() throws Exception {
+        mockMvc.perform(delete("/api/monitoreos/invitar")
+                        .param("emails", "test@test.com")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("[1]"))
+                .andExpect(status().isOk());
+    }
+
 }

@@ -483,20 +483,17 @@ class PlantMonitoreoServiceTest {
         // Act
         plantillaMonitoreoService.aplicarPlantillaAUsuario(1, "test@test.com", propietarioId);
 
-        // Assert
         verify(monitoreoRepository, never()).save(any());
     }
 
     @Test
     @DisplayName("findByUsuario: Debería retornar lista vacía si el repo no encuentra nada")
     void findByUsuario_SinResultados_DeberiaRetornarListaVacia() {
-        // Arrange
+
         when(plantillaMonitoreoRepository.findAllRelatedToUsuario(anyInt())).thenReturn(Collections.emptyList());
 
-        // Act
         List<PlantillaMonitoreo> resultado = plantillaMonitoreoService.findByUsuario(10);
 
-        // Assert
         assertTrue(resultado.isEmpty());
         verify(plantillaMonitoreoRepository).findAllRelatedToUsuario(10);
     }
