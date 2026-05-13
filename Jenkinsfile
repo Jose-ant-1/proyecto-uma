@@ -116,17 +116,31 @@ pipeline {
             }
         }
 
+stage('Build Mobile App') {
+    steps {
+        dir('movil') {
+            script {
+                // 1. Damos permisos de ejecución al wrapper de Gradle
+                sh "chmod +x gradlew"
+                
+                // 2. Compilamos la versión de despliegue (Release)
+                // Usamos -Pandroid.testInstrumentationRunnerArguments.notAnnotation=androidx.test.filters.LargeTest para saltar tests pesados si los hay
+                sh "./gradlew assembleRelease"
+            }
+        }
+    }
+}
+
 stage('Automate APK Download') {
     steps {
         script {
             sh "docker exec front-container mkdir -p /usr/share/nginx/html/downloads"
             
-            // Buscamos cualquier archivo .apk en la carpeta 'movil' y lo copiamos
-            // Usamos un comando de búsqueda para no fallar por el nombre exacto
+            // Ahora buscamos en la carpeta de salida estándar de Android
             sh """
-            apk_file=\$(find movil/ -name '*.apk' | head -n 1)
+            apk_file=\$(find movil/app/build/outputs/apk/release/ -name '*.apk' | head -n 1)
             if [ -z "\$apk_file" ]; then
-                echo "ERROR: No se encontró ninguna APK en el repositorio móvil"
+                echo "ERROR: No se generó la APK tras la compilación"
                 exit 1
             else
                 docker cp \$apk_file front-container:/usr/share/nginx/html/downloads/uma-app.apk
