@@ -16,7 +16,6 @@ import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import java.util.Arrays;
-import java.util.List;
 
 @Configuration
 @EnableWebSecurity
@@ -71,13 +70,18 @@ public class SecurityConfig {
 
         return http.build();
     }
-    //
-    // Mira
+
+
 
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:4200"));
+        // Permitimos tanto el entorno de desarrollo como el de producción (Docker)
+        configuration.setAllowedOrigins(Arrays.asList(
+                "http://localhost:4200",
+                "http://localhost",
+                "http://127.0.0.1"
+        ));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
 
         // MODIFICACIÓN AQUÍ: Añadimos x-xsrf-token y X-Requested-With
