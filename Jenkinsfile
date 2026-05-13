@@ -2,15 +2,12 @@ pipeline {
     agent any
 
     environment {
-        // Esto le dice a Jenkins que busque la herramienta configurada en el Paso 1
         SCANNER_HOME = tool 'sonar-scanner'
         MVN_HOME     = tool 'maven-3'
 
-        // Datos de Docker
         DOCKER_USER  = 'Pedro'
         IMAGE_NAME   = 'api_uma'
 
-        // Datos de BD (Asegúrate de que estas variables estén aquí para que la etapa Prepare DB no falle)
         DB_NAME      = 'uma_db'
         DB_USER      = 'user_uma'
         DB_PASS      = 'pass_uma'
@@ -20,52 +17,67 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git 'https://github.com/Jose-ant-1/proyecto-uma'
+                // Clonamos ambos repositorios en carpetas separadas
+                dir('backend') {
+                    git 'https://github.com/Jose-ant-1/proyecto-uma'
+                }
+                dir('frontend') {
+                    git 'https://github.com/Jose-ant-1/interfaz-uma'
+                }
             }
         }
 
         stage('Maven Build') {
             steps {
-                // Usamos la ruta absoluta de la herramienta Maven para compilar
-                sh "${MVN_HOME}/bin/mvn clean compile"
+                dir('backend') {
+                    sh "${MVN_HOME}/bin/mvn clean compile package -DskipTests"
+                }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('sonarqube') {
-                    sh "${SCANNER_HOME}/bin/sonar-scanner \
-                    -Dsonar.projectKey=proyecto-uma \
-                    -Dsonar.sources=src/main/java \
-                    -Dsonar.java.binaries=target/classes"
+                dir('backend') {
+                    withSonarQubeEnv('sonarqube') {
+                        sh """
+                        ${SCANNER_HOME}/bin/sonar-scanner \
+                        -Dsonar.projectKey=proyecto-uma \
+                        -Dsonar.sources=src/main/java \
+                        -Dsonar.java.binaries=target/classes
+                        """
+                    }
                 }
             }
         }
 
-stage('Prepare Network & DB') {
-    steps {
-        script {
-            // Crea la red solo si no existe
-            sh "docker network create jenkins-sonar-net || true"
-            // Conecta el contenedor de la base de datos a la red del pipeline
-            sh "docker network connect jenkins-sonar-net db-api || true"
-        }
-    }
-}
-
-        stage('Build Docker Image') {
+        stage("Quality Gate") {
             steps {
-                // El punto al final es vital para encontrar el Dockerfile
-                sh "docker build -t ${DOCKER_USER}/${IMAGE_NAME}:latest ."
+                // Pausa el pipeline hasta que SonarQube devuelva el estado (OK o ERROR)
+                timeout(time: 1, unit: 'HOURS') {
+                    waitForQualityGate abortPipeline: true
+                }
             }
         }
 
-stage('Deploy API') {
+        stage('Prepare Network & DB') {
             steps {
                 script {
-                    sh "docker stop api-container || true && docker rm api-container || true"
+                    sh "docker network create jenkins-sonar-net || true"
+                    // Conectamos la DB a la red si ya existe
+                    sh "docker network connect jenkins-sonar-net db-api || true"
+                }
+            }
+        }
 
-                    // Usamos la variable JWT_SECRET_VAL que viene de las credenciales de Jenkins
+        stage('Build & Deploy API') {
+            steps {
+                script {
+                    dir('backend') {
+                        sh "docker build -t ${DOCKER_USER}/${IMAGE_NAME}:latest ."
+                    }
+                    
+                    sh "docker stop api-container || true && docker rm api-container || true"
+                    
                     sh """
                     docker run -d --name api-container \
                     --network jenkins-sonar-net \
@@ -79,6 +91,50 @@ stage('Deploy API') {
                     """
                 }
             }
+        }
+
+        stage('Build & Deploy Front') {
+            steps {
+                script {
+                    dir('frontend') {
+                        // El Dockerfile debe estar en la raíz de 'interfaz-uma'
+                        sh "docker build -t ${DOCKER_USER}/front_uma:latest ."
+                    }
+                    
+                    sh "docker stop front-container || true && docker rm front-container || true"
+                    
+                    sh """
+                    docker run -d --name front-container \
+                    --network jenkins-sonar-net \
+                    -p 80:80 \
+                    ${DOCKER_USER}/front_uma:latest
+                    """
+                }
+            }
+        }
+
+        stage('Automate APK Download') {
+            steps {
+                script {
+                    // 1. Creamos la carpeta de descargas dentro del contenedor del front si no existe
+                    sh "docker exec front-container mkdir -p /usr/share/nginx/html/downloads"
+                    
+                    // 2. Copiamos la APK. Ajusta la ruta 'backend/...' a donde se encuentre tu archivo
+                    // Si la APK está en la raíz del repo backend:
+                    sh "docker cp backend/app-release.apk front-container:/usr/share/nginx/html/downloads/uma-app.apk"
+                    
+                    echo "APK desplegada correctamente en el Frontend."
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo "Pipeline finalizado."
+        }
+        failure {
+            echo "El pipeline ha fallado. Revisa los logs de SonarQube o Docker."
         }
     }
 }
