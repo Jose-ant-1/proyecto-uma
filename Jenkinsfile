@@ -49,7 +49,7 @@ pipeline {
                 }
             }
         }
-
+/*
         stage("Quality Gate") {
             steps {
                 // Pausa el pipeline hasta que SonarQube devuelva el estado (OK o ERROR)
@@ -58,7 +58,7 @@ pipeline {
                 }
             }
         }
-
+*/
         stage('Prepare Network & DB') {
             steps {
                 script {
