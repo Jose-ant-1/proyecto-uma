@@ -24,6 +24,9 @@ pipeline {
                 dir('frontend') {
                     git 'https://github.com/Jose-ant-1/interfaz-uma'
                 }
+                dir('movil') { 
+                    git 'https://github.com/PTenav/proyectoUMA' 
+                }
             }
         }
 
