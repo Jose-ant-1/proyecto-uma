@@ -116,20 +116,25 @@ pipeline {
             }
         }
 
-        stage('Automate APK Download') {
-            steps {
-                script {
-                    // 1. Creamos la carpeta de descargas dentro del contenedor del front si no existe
-                    sh "docker exec front-container mkdir -p /usr/share/nginx/html/downloads"
-                    
-                    // 2. Copiamos la APK. Ajusta la ruta 'backend/...' a donde se encuentre tu archivo
-                    // Si la APK está en la raíz del repo backend:
-                    sh "docker cp backend/app-release.apk front-container:/usr/share/nginx/html/downloads/uma-app.apk"
-                    
-                    echo "APK desplegada correctamente en el Frontend."
-                }
-            }
+stage('Automate APK Download') {
+    steps {
+        script {
+            sh "docker exec front-container mkdir -p /usr/share/nginx/html/downloads"
+            
+            // Buscamos cualquier archivo .apk en la carpeta 'movil' y lo copiamos
+            // Usamos un comando de búsqueda para no fallar por el nombre exacto
+            sh """
+            apk_file=\$(find movil/ -name '*.apk' | head -n 1)
+            if [ -z "\$apk_file" ]; then
+                echo "ERROR: No se encontró ninguna APK en el repositorio móvil"
+                exit 1
+            else
+                docker cp \$apk_file front-container:/usr/share/nginx/html/downloads/uma-app.apk
+            fi
+            """
         }
+    }
+}
     }
     
     post {
