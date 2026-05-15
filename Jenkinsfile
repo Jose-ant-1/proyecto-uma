@@ -4,29 +4,20 @@ pipeline {
     environment {
         SCANNER_HOME = tool 'sonar-scanner'
         MVN_HOME     = tool 'maven-3'
-
         DOCKER_USER  = 'Pedro'
         IMAGE_NAME   = 'api_uma'
-
         DB_NAME      = 'uma_db'
         DB_USER      = 'user_uma'
         DB_PASS      = 'pass_uma'
-        // Credencial de Jenkins
         JWT_SECRET_VAL = credentials('jwt-secret-api')
     }
 
     stages {
         stage('Checkout') {
             steps {
-                dir('backend') {
-                    git 'https://github.com/Jose-ant-1/proyecto-uma'
-                }
-                dir('frontend') {
-                    git 'https://github.com/Jose-ant-1/interfaz-uma'
-                }
-                dir('movil') {
-                    git 'https://github.com/PTenav/proyectoUMA'
-                }
+                dir('backend') { git 'https://github.com/Jose-ant-1/proyecto-uma' }
+                dir('frontend') { git 'https://github.com/Jose-ant-1/interfaz-uma' }
+                dir('movil') { git 'https://github.com/PTenav/proyectoUMA' }
             }
         }
 
@@ -57,7 +48,6 @@ pipeline {
             steps {
                 script {
                     sh "docker network create jenkins-sonar-net || true"
-                    // Aseguramos que la DB esté en la red correcta
                     sh "docker network connect jenkins-sonar-net db-api || true"
                 }
             }
@@ -70,21 +60,21 @@ pipeline {
                         sh "docker build -t ${DOCKER_USER}/${IMAGE_NAME}:latest ."
                     }
 
-                    // Borrado forzoso: evita el error 125 por nombre duplicado
                     sh "docker rm -f api-container || true"
 
-                    // IMPORTANTE: Usamos comillas simples triples para evitar el error de interpolación
-                    // y el puerto 8081 para no chocar con el 8080 de Jenkins
-                    sh '''
+                    // CORRECCIÓN AQUÍ: Usamos comillas dobles normales de Groovy.
+                    // Jenkins se encargará de inyectar los valores de forma segura antes de lanzar el comando.
+                    sh """
                     docker run -d --name api-container \
                     --network jenkins-sonar-net \
                     -p 8081:8080 \
-                    -e SPRING_DATASOURCE_URL="jdbc:mysql://db-api:3306/''' + DB_NAME + '''?createDatabaseIfNotExist=true" \
-                    -e SPRING_DATASOURCE_USERNAME="''' + DB_USER + '''" \
-                    -e SPRING_DATASOURCE_PASSWORD="''' + DB_PASS + '''" \
+                    -e SPRING_DATASOURCE_URL="jdbc:mysql://db-api:3306/${DB_NAME}?createDatabaseIfNotExist=true" \
+                    -e SPRING_DATASOURCE_USERNAME="${DB_USER}" \
+                    -e SPRING_DATASOURCE_PASSWORD="${DB_PASS}" \
                     -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
-                    -e JWT_SECRET="''' + JWT_SECRET_VAL + '''" \
-                    ''' + "${DOCKER_USER}/${IMAGE_NAME}:latest"
+                    -e JWT_SECRET="${JWT_SECRET_VAL}" \
+                    ${DOCKER_USER}/${IMAGE_NAME}:latest
+                    """
                 }
             }
         }
@@ -95,9 +85,7 @@ pipeline {
                     dir('frontend') {
                         sh "docker build -t ${DOCKER_USER}/front_uma:latest ."
                     }
-
                     sh "docker rm -f front-container || true"
-
                     sh """
                     docker run -d --name front-container \
                     --network jenkins-sonar-net \
@@ -122,10 +110,8 @@ pipeline {
         stage('Automate APK Download') {
             steps {
                 script {
-                    // Esperamos un par de segundos a que el front esté listo
                     sleep 2
                     sh "docker exec front-container mkdir -p /usr/share/nginx/html/downloads"
-
                     sh """
                     apk_file=\$(find movil/app/build/outputs/apk/release/ -name '*.apk' | head -n 1)
                     if [ -z "\$apk_file" ]; then
@@ -141,11 +127,7 @@ pipeline {
     }
 
     post {
-        always {
-            echo "Pipeline finalizado."
-        }
-        failure {
-            echo "El pipeline ha fallado. Revisa los logs de SonarQube o Docker."
-        }
+        always { echo "Pipeline finalizado." }
+        failure { echo "El pipeline ha fallado. Revisa los logs: docker logs api-container" }
     }
 }
