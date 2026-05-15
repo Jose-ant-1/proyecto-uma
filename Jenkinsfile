@@ -60,21 +60,19 @@ stage('Build & Deploy API') {
             }
             sh "docker rm -f api-container || true"
 
-            withCredentials([string(credentialsId: 'jwt-secret-api', variable: 'JWT_SECRET_VAL')]) {
-                // Usamos comillas SIMPLES para que Jenkins no intente leer las variables
-                // y las inyecte Docker directamente del entorno
-                sh '''
-                docker run -d --name api-container \
-                --network jenkins-sonar-net \
-                -p 8081:8080 \
-                -e SPRING_DATASOURCE_URL="jdbc:mysql://db-api:3306/uma_db?createDatabaseIfNotExist=true" \
-                -e SPRING_DATASOURCE_USERNAME="user_uma" \
-                -e SPRING_DATASOURCE_PASSWORD="pass_uma" \
-                -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
-                -e JWT_SECRET="$JWT_SECRET_VAL" \
-                Pedro/api_uma:latest
-                '''
-            }
+withCredentials([string(credentialsId: 'jwt-secret-api', variable: 'JWT_SECRET_VAL')]) {
+    sh '''
+    docker run -d --name api-container \
+    --network jenkins-sonar-net \
+    -p 8081:8080 \
+    -e SPRING_DATASOURCE_URL="jdbc:mysql://db-api:3306/uma_db?createDatabaseIfNotExist=true" \
+    -e SPRING_DATASOURCE_USERNAME="user_uma" \
+    -e SPRING_DATASOURCE_PASSWORD="pass_uma" \
+    -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
+    -e JWT_SECRET=''' + "'$JWT_SECRET_VAL'" + ''' \
+    Pedro/api_uma:latest
+    '''
+}
         }
     }
 }
