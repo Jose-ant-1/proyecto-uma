@@ -79,6 +79,7 @@ public class SecurityConfig {
         // Permitimos tanto el entorno de desarrollo como el de producción (Docker)
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:4200",
+                "http://localhost:8081",
                 "http://localhost",
                 "http://127.0.0.1"
         ));
