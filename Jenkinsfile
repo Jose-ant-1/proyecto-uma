@@ -52,18 +52,17 @@ pipeline {
             }
         }
 
-        stage('Build & Deploy API') {
+stage('Build & Deploy API') {
             steps {
                 script {
                     dir('backend') {
                         sh "docker build -t ${DOCKER_USER}/${IMAGE_NAME}:latest ."
                     }
-
                     sh "docker rm -f api-container || true"
 
-                    // Inyectamos el secreto de forma nativa para evitar errores de sintaxis
                     withCredentials([string(credentialsId: 'jwt-secret-api', variable: 'JWT_SECRET_VAL')]) {
-                        sh """
+                        // Usamos comillas simples para evitar la advertencia de interpolación
+                        sh '''
                         docker run -d --name api-container \
                         --network jenkins-sonar-net \
                         -p 8081:8080 \
@@ -73,7 +72,7 @@ pipeline {
                         -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
                         -e JWT_SECRET="${JWT_SECRET_VAL}" \
                         ${DOCKER_USER}/${IMAGE_NAME}:latest
-                        """
+                        '''
                     }
                 }
             }
