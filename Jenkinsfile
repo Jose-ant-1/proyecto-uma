@@ -72,29 +72,29 @@ pipeline {
             }
         }
 
-        stage('Build & Deploy API') {
-            steps {
-                script {
-                    dir('backend') {
-                        sh "docker build -t ${DOCKER_USER}/${IMAGE_NAME}:latest ."
-                    }
-                    
-                    sh "docker stop api-container || true && docker rm api-container || true"
-                    
-                    sh """
-                    docker run -d --name api-container \
-                    --network jenkins-sonar-net \
-                    -p 8080:8080 \
-                    -e SPRING_DATASOURCE_URL=jdbc:mysql://db-api:3306/${DB_NAME}?createDatabaseIfNotExist=true \
-                    -e SPRING_DATASOURCE_USERNAME=${DB_USER} \
-                    -e SPRING_DATASOURCE_PASSWORD=${DB_PASS} \
-                    -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
-                    -e JWT_SECRET=${JWT_SECRET_VAL} \
-                    ${DOCKER_USER}/${IMAGE_NAME}:latest
-                    """
-                }
+stage('Build & Deploy API') {
+    steps {
+        script {
+            dir('backend') {
+                sh "docker build -t ${DOCKER_USER}/${IMAGE_NAME}:latest ."
             }
+            // Forzamos la limpieza con -f (force)
+            sh "docker rm -f api-container || true"
+            
+            sh """
+            docker run -d --name api-container \
+            --network jenkins-sonar-net \
+            -p 8080:8080 \
+            -e SPRING_DATASOURCE_URL=jdbc:mysql://db-api:3306/${DB_NAME}?createDatabaseIfNotExist=true \
+            -e SPRING_DATASOURCE_USERNAME=${DB_USER} \
+            -e SPRING_DATASOURCE_PASSWORD=${DB_PASS} \
+            -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
+            -e JWT_SECRET=${JWT_SECRET_VAL} \
+            ${DOCKER_USER}/${IMAGE_NAME}:latest
+            """
         }
+    }
+}
 
         stage('Build & Deploy Front') {
             steps {
