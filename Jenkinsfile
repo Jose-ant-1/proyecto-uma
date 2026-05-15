@@ -84,7 +84,7 @@ pipeline {
                     sh """
                     docker run -d --name api-container \
                     --network jenkins-sonar-net \
-                    -p 8081:8080 \
+                    -p 8080:8080 \
                     -e SPRING_DATASOURCE_URL=jdbc:mysql://db-api:3306/${DB_NAME}?createDatabaseIfNotExist=true \
                     -e SPRING_DATASOURCE_USERNAME=${DB_USER} \
                     -e SPRING_DATASOURCE_PASSWORD=${DB_PASS} \
