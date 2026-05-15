@@ -9,7 +9,6 @@ pipeline {
         DB_NAME      = 'uma_db'
         DB_USER      = 'user_uma'
         DB_PASS      = 'pass_uma'
-        JWT_SECRET_VAL = credentials('jwt-secret-api')
     }
 
     stages {
@@ -53,7 +52,7 @@ pipeline {
             }
         }
 
-stage('Build & Deploy API') {
+        stage('Build & Deploy API') {
             steps {
                 script {
                     dir('backend') {
@@ -62,7 +61,7 @@ stage('Build & Deploy API') {
 
                     sh "docker rm -f api-container || true"
 
-                    // Usamos withCredentials para manejar el secreto de forma nativa y segura
+                    // Inyectamos el secreto de forma nativa para evitar errores de sintaxis
                     withCredentials([string(credentialsId: 'jwt-secret-api', variable: 'JWT_SECRET_VAL')]) {
                         sh """
                         docker run -d --name api-container \
@@ -87,12 +86,7 @@ stage('Build & Deploy API') {
                         sh "docker build -t ${DOCKER_USER}/front_uma:latest ."
                     }
                     sh "docker rm -f front-container || true"
-                    sh """
-                    docker run -d --name front-container \
-                    --network jenkins-sonar-net \
-                    -p 80:80 \
-                    ${DOCKER_USER}/front_uma:latest
-                    """
+                    sh "docker run -d --name front-container --network jenkins-sonar-net -p 80:80 ${DOCKER_USER}/front_uma:latest"
                 }
             }
         }
@@ -100,10 +94,7 @@ stage('Build & Deploy API') {
         stage('Build Mobile App') {
             steps {
                 dir('movil') {
-                    script {
-                        sh "chmod +x gradlew"
-                        sh "./gradlew assembleRelease"
-                    }
+                    sh "chmod +x gradlew && ./gradlew assembleRelease"
                 }
             }
         }
@@ -111,19 +102,23 @@ stage('Build & Deploy API') {
         stage('Automate APK Download') {
             steps {
                 script {
-                    sleep 2
+                    sleep 5
                     sh "docker exec front-container mkdir -p /usr/share/nginx/html/downloads"
-                    sh """
-                    apk_file=\$(find movil/app/build/outputs/apk/release/ -name '*.apk' | head -n 1)
-                    if [ -z "\$apk_file" ]; then
-                        echo "ERROR: No se generó la APK"
-                        exit 1
+                    sh '''
+                    apk_file=$(find movil/app/build/outputs/apk/release/ -name "*.apk" | head -n 1)
+                    if [ -n "$apk_file" ]; then
+                        docker cp "$apk_file" front-container:/usr/share/nginx/html/downloads/uma-app.apk
                     else
-                        docker cp \$apk_file front-container:/usr/share/nginx/html/downloads/uma-app.apk
+                        echo "APK NOT FOUND"
+                        exit 1
                     fi
-                    """
+                    '''
                 }
             }
         }
+    }
+
+    post {
+        failure { echo "Pipeline fallido. Revisa: docker logs api-container" }
     }
 }
