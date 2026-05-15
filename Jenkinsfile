@@ -78,20 +78,21 @@ stage('Build & Deploy API') {
             dir('backend') {
                 sh "docker build -t ${DOCKER_USER}/${IMAGE_NAME}:latest ."
             }
-            // Forzamos la limpieza con -f (force)
+            
+            // Borrado forzoso y limpieza de seguridad
             sh "docker rm -f api-container || true"
             
-            sh """
+            // Usamos comillas simples para evitar la interpolación insegura de JWT_SECRET_VAL
+            sh '''
             docker run -d --name api-container \
             --network jenkins-sonar-net \
             -p 8080:8080 \
-            -e SPRING_DATASOURCE_URL=jdbc:mysql://db-api:3306/${DB_NAME}?createDatabaseIfNotExist=true \
-            -e SPRING_DATASOURCE_USERNAME=${DB_USER} \
-            -e SPRING_DATASOURCE_PASSWORD=${DB_PASS} \
+            -e SPRING_DATASOURCE_URL="jdbc:mysql://db-api:3306/${DB_NAME}?createDatabaseIfNotExist=true" \
+            -e SPRING_DATASOURCE_USERNAME="${DB_USER}" \
+            -e SPRING_DATASOURCE_PASSWORD="${DB_PASS}" \
             -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
-            -e JWT_SECRET=${JWT_SECRET_VAL} \
-            ${DOCKER_USER}/${IMAGE_NAME}:latest
-            """
+            -e JWT_SECRET="${JWT_SECRET_VAL}" \
+            ''' + "${DOCKER_USER}/${IMAGE_NAME}:latest"
         }
     }
 }
