@@ -126,9 +126,4 @@ stage('Build & Deploy API') {
             }
         }
     }
-
-    post {
-        always { echo "Pipeline finalizado." }
-        failure { echo "El pipeline ha fallado. Revisa los logs: docker logs api-container" }
-    }
 }
