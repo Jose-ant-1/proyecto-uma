@@ -62,18 +62,20 @@ stage('Build & Deploy API') {
 
                     sh "docker rm -f api-container || true"
 
-                    // Usamos comillas simples para el bloque sh y pasamos las variables
-                    // de forma que Jenkins no vea la "interpolación insegura"
-                    sh '''
-                    docker run -d --name api-container \
-                    --network jenkins-sonar-net \
-                    -p 8081:8080 \
-                    -e SPRING_DATASOURCE_URL="jdbc:mysql://db-api:3306/''' + DB_NAME + '''?createDatabaseIfNotExist=true" \
-                    -e SPRING_DATASOURCE_USERNAME="''' + DB_USER + '''" \
-                    -e SPRING_DATASOURCE_PASSWORD="''' + DB_PASS + '''" \
-                    -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
-                    -e JWT_SECRET="''' + JWT_SECRET_VAL + '''" \
-                    ''' + DOCKER_USER + "/" + IMAGE_NAME + ":latest"
+                    // Usamos withCredentials para manejar el secreto de forma nativa y segura
+                    withCredentials([string(credentialsId: 'jwt-secret-api', variable: 'JWT_SECRET_VAL')]) {
+                        sh """
+                        docker run -d --name api-container \
+                        --network jenkins-sonar-net \
+                        -p 8081:8080 \
+                        -e SPRING_DATASOURCE_URL="jdbc:mysql://db-api:3306/${DB_NAME}?createDatabaseIfNotExist=true" \
+                        -e SPRING_DATASOURCE_USERNAME="${DB_USER}" \
+                        -e SPRING_DATASOURCE_PASSWORD="${DB_PASS}" \
+                        -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
+                        -e JWT_SECRET="${JWT_SECRET_VAL}" \
+                        ${DOCKER_USER}/${IMAGE_NAME}:latest
+                        """
+                    }
                 }
             }
         }
