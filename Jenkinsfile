@@ -53,7 +53,7 @@ pipeline {
             }
         }
 
-        stage('Build & Deploy API') {
+stage('Build & Deploy API') {
             steps {
                 script {
                     dir('backend') {
@@ -62,19 +62,18 @@ pipeline {
 
                     sh "docker rm -f api-container || true"
 
-                    // CORRECCIÓN AQUÍ: Usamos comillas dobles normales de Groovy.
-                    // Jenkins se encargará de inyectar los valores de forma segura antes de lanzar el comando.
-                    sh """
+                    // Usamos comillas simples para el bloque sh y pasamos las variables
+                    // de forma que Jenkins no vea la "interpolación insegura"
+                    sh '''
                     docker run -d --name api-container \
                     --network jenkins-sonar-net \
                     -p 8081:8080 \
-                    -e SPRING_DATASOURCE_URL="jdbc:mysql://db-api:3306/${DB_NAME}?createDatabaseIfNotExist=true" \
-                    -e SPRING_DATASOURCE_USERNAME="${DB_USER}" \
-                    -e SPRING_DATASOURCE_PASSWORD="${DB_PASS}" \
+                    -e SPRING_DATASOURCE_URL="jdbc:mysql://db-api:3306/''' + DB_NAME + '''?createDatabaseIfNotExist=true" \
+                    -e SPRING_DATASOURCE_USERNAME="''' + DB_USER + '''" \
+                    -e SPRING_DATASOURCE_PASSWORD="''' + DB_PASS + '''" \
                     -e SPRING_JPA_HIBERNATE_DDL_AUTO=update \
-                    -e JWT_SECRET="${JWT_SECRET_VAL}" \
-                    ${DOCKER_USER}/${IMAGE_NAME}:latest
-                    """
+                    -e JWT_SECRET="''' + JWT_SECRET_VAL + '''" \
+                    ''' + DOCKER_USER + "/" + IMAGE_NAME + ":latest"
                 }
             }
         }
